@@ -65,7 +65,7 @@ Concerning the dataset used for training, you can use your own or the one used i
 The dataset used in this thesis is in this [page](http://bnci-horizon-2020.eu/database/data-sets) under the name *Monitoring error-related potentials (013-2015)*. The header *Data* is followed by 12 files (6 subjects with 2 sessions each).
 
 1. Download all the 12 files locally.
-2. Run this [Matlab file]() to convert the files from Matlab variable file (.mat extension) to Comma Separated Values file (.csv extension).
+2. Run this [Matlab file](Auxiliary%20functions/convert_dataset_mat2csv.m) to convert the files from Matlab variable file (.mat extension) to Comma Separated Values file (.csv extension).
    * Change the load and save directories inside the Matlab function as necessary.
    * After the program runs, you should have one files called *AllLabels.csv* and 120 other .csv files (10 runs for each subject and session) named with the format "Subject\<sub\>\_s\<sess\>\_run\<r\>.csv".
 3. Copy these files to the Google Drive
