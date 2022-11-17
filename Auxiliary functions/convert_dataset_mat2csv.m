@@ -1,6 +1,7 @@
 %% Paths
-dataset_path2 = "D:\Thesis\BCI_datasets\Monitoring error-related potentials 2015\";
-store_path2 = "D:\Thesis\Database_Monitoring_ErrP_temp\";
+dataset_path2 = "~/Documents/PhD/BCI_Datasets/Monitoring ErrP/matlabdata/";
+store_path2 = "~/Documents/PhD/BCI_Datasets/Monitoring ErrP/csvdata/";
+
 
 files_list2 = dir(dataset_path2 + '*.mat');
 files_list2 = {files_list2.name};
