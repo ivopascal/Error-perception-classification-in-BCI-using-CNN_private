@@ -55,9 +55,6 @@ class ModelCore(pl.LightningModule):
         shape = x.shape
         x = x.view(shape[0], 1, shape[1], shape[2])
 
-        r = random.randint(1, x.shape[3] - 64)
-        x = x[:, :, :, r:(r + 64)]
-
         return self.model(x)
 
     def calculate_loss_and_accuracy(self, train_batch, name):

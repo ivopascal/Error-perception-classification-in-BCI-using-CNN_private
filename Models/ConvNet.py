@@ -63,7 +63,7 @@ class ConvNet2C(ModelCore):
                 # paper describes 1x1 pooling but this wouldn't do anything
                 # nn.MaxPool2d(kernel_size=(1, 1), stride=(1, 1)),
                 nn.Flatten(),
-                nn.Linear(64 * 12, 2),
+                nn.Linear(64 * 12, 2),  # 768 for 60 samples
         )
 
 
@@ -77,7 +77,7 @@ class ConvNet64C(ConvNet2C):
                 nn.ELU(),
                 nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
                 nn.Flatten(),
-                nn.Linear(2304, 2),
+                nn.Linear(25344, 2),  # 25344 for 600ms, 2304 for 64 samples
         )
 
     @staticmethod

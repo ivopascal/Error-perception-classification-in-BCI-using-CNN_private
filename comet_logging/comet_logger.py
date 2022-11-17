@@ -1,10 +1,12 @@
+from typing import Tuple
+
 import comet_ml
 import datetime
 import pytorch_lightning as pl
 import pickle as pk
 
 
-def get_cometlogger():
+def get_cometlogger() -> Tuple[pl.loggers.CometLogger, str]:
     experiment_name = 'CNN_baseline'
     experiment_creation_time = datetime.datetime.now().strftime("[%Y-%m-%d,%H:%M]")
 
