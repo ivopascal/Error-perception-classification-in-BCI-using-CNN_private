@@ -164,9 +164,6 @@ class ModelCore(pl.LightningModule):
         self.log_dict(logs)
         return {'log': logs}
 
-    def prepare_data(self) -> None:
-        pass
-
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.hyper_params['batch_size'], num_workers=8, shuffle=True)
 
@@ -184,4 +181,4 @@ class ModelCore(pl.LightningModule):
         return [optimizer]
 
     def get_test_labels_predictions(self):
-        return (self.test_y_true, self.test_y_predicted)
+        return self.test_y_true, self.test_y_predicted

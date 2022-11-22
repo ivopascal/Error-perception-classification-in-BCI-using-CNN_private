@@ -11,6 +11,7 @@ def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_
     (y_true, y_predicted) = model.get_test_labels_predictions()
 
     y_true = y_true.reshape(-1).tolist()
+    y_true = [int(y == 4.0) for y in y_true]
     y_predicted = y_predicted.reshape(-1).tolist()
 
     y_true_matrix, y_predicted_matrix = [], []
@@ -18,7 +19,6 @@ def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_
     for i in range(len(y_true)):
         y_true_add = [0, 0]
         y_pred_add = [0, 0]
-        # (Naturally) this doesn't work for single output neurons
         y_true_add[int(y_true[i])] = 1
         y_pred_add[int(y_predicted[i])] = 1
         y_true_matrix.append(y_true_add)

@@ -22,7 +22,7 @@ def train(dataset_file_path: str = DATASET_FILE_PATH):
     train_set, val_set, test_set = build_dataset("Balanced",  dataset_file_path)
 
     hyper_params = {
-        'max_num_epochs': 2
+        # 'max_num_epochs': 1
     }
 
     model_classes = [
