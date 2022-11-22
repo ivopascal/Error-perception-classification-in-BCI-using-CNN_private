@@ -2,8 +2,8 @@ import math
 
 import pytorch_lightning as pl
 
-from Models.model_core import ModelCore
-from data.Datamodule import DataModule
+from src.Models.model_core import ModelCore
+from src.data.Datamodule import DataModule
 
 
 def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_logger: pl.loggers.CometLogger):

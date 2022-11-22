@@ -1,15 +1,17 @@
 from datetime import datetime
-import comet_ml  # Comet ML needs to be imported before torch
-from comet_logging.comet_logger import get_cometlogger, perform_basic_logging
+from typing import Optional
+
+from src.comet_logging.comet_logger import get_cometlogger, perform_basic_logging
 import pytorch_lightning as pl
 import time
 import torch
 
-from Models import CorreiaNet
-from data.Datamodule import DataModule
-from data.build_dataset import build_dataset
-from evaluation.evaluate import evaluate_model
+from src.Models import CorreiaNet
+from src.data.Datamodule import DataModule
+from src.data.build_dataset import build_dataset
+from src.evaluation.evaluate import evaluate_model
 from settings import PROJECT_MODEL_SAVES_FOLDER, PROJECT_BALANCED_FOLDER
+from src.util.dataclasses import EpochedDataSet
 
 EXPERIMENT_NAME = "CNN_baseline"
 DATASET_FILE_NAME = "bp[low:1,high:10,ord:6]_epoch[onset:0,size:600]_bal[added_to:0,#:3055].p"
@@ -18,11 +20,10 @@ DATASET_FILE_PATH = PROJECT_BALANCED_FOLDER + DATASET_FILE_NAME
 DEBUG_MODE = False
 
 
-def train(dataset_file_path: str = DATASET_FILE_PATH):
-    train_set, val_set, test_set = build_dataset("Balanced",  dataset_file_path)
+def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedDataSet] = None):
+    train_set, val_set, test_set = build_dataset(dataset_file_path, dataset)
 
     hyper_params = {
-        # 'max_num_epochs': 1
     }
 
     model_classes = [

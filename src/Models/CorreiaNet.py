@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from Models.model_core import ModelCore
+from src.Models.model_core import ModelCore
 
 
 class CorreiaNet(ModelCore):

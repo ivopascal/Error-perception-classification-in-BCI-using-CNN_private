@@ -6,6 +6,7 @@ import os
 import pickle as pk
 
 from settings import PROJECT_BALANCED_FOLDER, PROJECT_EPOCHED_FOLDER
+from src.util.dataclasses import EpochedDataSet
 
 
 def save_file_pickle(data, path, force_overwrite=False):
@@ -38,29 +39,14 @@ def get_available_pickle_folders(path: str, folder_type="") -> Tuple[List[str], 
     return available_files, available_files_types
 
 
-def build_dataset(variant: str = "Balanced", filepath: Optional[str] = None):
-    if variant == "Balanced":
-        if filepath:
-            data, data_labels, filtered_metadata, epoched_metadata, balanced_metadata = open_file_pickle(filepath)
-        else:
-            available_files, _ = get_available_pickle_folders(PROJECT_BALANCED_FOLDER, "Balanced")
-            data, data_labels, filtered_metadata, epoched_metadata, balanced_metadata = open_file_pickle(
-                available_files[0])
+def build_dataset(filepath: Optional[str] = None, dataset: Optional[EpochedDataSet] = None):
+    if not dataset:
+        dataset = open_file_pickle(filepath)
 
-    elif variant == "Epoched":
-        if filepath:
-            data, data_labels, filtered_metadata, epoched_metadata = open_file_pickle(filepath)
-        else:
-            available_files, _ = get_available_pickle_folders(PROJECT_EPOCHED_FOLDER, "Epoched")
-            data, data_labels, filtered_metadata, epoched_metadata = open_file_pickle(available_files[0])
+    data = np.array(dataset.data, dtype="float32")
+    train_idxs, val_idxs, test_idxs = split_all_subject_by_session(dataset.labels)
 
-    else:
-        raise ValueError(f"Variant {variant} not known")
-
-    data = np.array(data, dtype="float32")
-    train_idxs, val_idxs, test_idxs = split_all_subject_by_session(data_labels)
-
-    return apply_split_indices(data, data_labels, split_indices=(train_idxs, val_idxs, test_idxs))
+    return apply_split_indices(data, dataset.labels, split_indices=(train_idxs, val_idxs, test_idxs))
 
 
 def apply_split_indices(data, data_labels, split_indices):

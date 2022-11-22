@@ -1,4 +1,5 @@
 import math
+import os
 from functools import cache
 from typing import List
 
@@ -7,13 +8,14 @@ import numpy as np
 import re
 
 from tqdm import tqdm
-from scipy.signal import butter, sosfreqz, sosfiltfilt
+from scipy.signal import butter, sosfiltfilt
 
-
-from data.build_dataset import save_file_pickle, open_file_pickle
+from src.data.build_dataset import save_file_pickle, open_file_pickle
 from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX, \
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
     NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER
+from src.data.util import file_names_timeseries_to_iterator
+from src.util.dataclasses import TimeSeriesRun
 
 
 def indices_to_leading_zeros(indices, n_digits):
@@ -33,7 +35,7 @@ def channel_name_to_physiological_index(channel_name: str) -> int:
     return physiological_channels.index(channel_name)
 
 
-def load_dataset_from_csv_to_pickle():
+def load_dataset_from_csv_to_pickle(override_saved_files=True) -> List[TimeSeriesRun]:
     load_labels = pd.read_csv(PROJECT_DATASET_FOLDER + "AllLabels.csv").to_numpy()
     all_labels = []
     for label in load_labels:
@@ -57,7 +59,12 @@ def load_dataset_from_csv_to_pickle():
                   for session in indices_to_leading_zeros(SESSIONS_IDX, 1)
                   for run in indices_to_leading_zeros(RUNS_IDX, 1)]
 
+    datasets = []
     for file_name in tqdm(file_names, unit="file"):
+        save_path = PROJECT_RAW_FOLDER + file_name + ".p"
+        if os.path.exists(save_path) and not override_saved_files:
+            datasets.append(open_file_pickle(save_path))
+            continue
         file_path = LOCAL_DATASET_ALL_FOLDER + file_name + ".csv"
         file_sub_sess_run = [int(s) for s in re.split('(\d+)', file_name) if s.isdigit()]
         # Read file and convert to Numpy (transpose to put Channels in the first axis and Time in the second axis)
@@ -69,68 +76,89 @@ def load_dataset_from_csv_to_pickle():
         # Get feedback indexes
         fb_indexes = np.where(new_sess[channel_name_to_index('Feedback'), :] == 1)[
             0]  # time points where feedback is presented
-        save_path = PROJECT_RAW_FOLDER + file_name + ".p"
-        save_file_pickle((new_sess, file_sub_sess_run, this_labels, fb_indexes), save_path, force_overwrite=True)
+        dataset = TimeSeriesRun(session=new_sess, file_sub_sess_run=file_sub_sess_run, labels=this_labels,
+                                feedback_indices=fb_indexes, file_name=file_name)
+        datasets.append(dataset)
+        save_file_pickle(dataset, save_path, force_overwrite=True)
 
-    return file_names
+    return datasets
 
 
-def preprocess_data(file_names) -> List[str]:
+def construct_metadata():
+    metadata = {}
+    if USE_BANDPASS:
+        bandpass_metadata = {'low_freq': BANDPASS_LOW_FREQ, 'high_freq': BANDPASS_HIGH_FREQ,
+                             'fs': SAMPLING_FREQUENCY,
+                             'order': BANDPASS_ORDER}
+
+        metadata.update({"bandpass_filter": bandpass_metadata})
+
+    if EXCLUDE_CHANNELS or INCLUDE_CHANNELS:
+        if EXCLUDE_CHANNELS:
+            num_channels = len(CHANNEL_NAMES) - len(NON_PHYSIOLOGICAL_CHANNELS) - len(EXCLUDE_CHANNELS)
+        else:
+            num_channels = len(INCLUDE_CHANNELS)
+
+        channel_selection = {'exclude_channels': EXCLUDE_CHANNELS, 'include_channels': INCLUDE_CHANNELS,
+                             'num_channels': num_channels}
+
+        metadata.update({"channel_selection": channel_selection})
+
+    return metadata
+
+
+def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = None, override_save=True)\
+        -> List[TimeSeriesRun]:
     physiological_indices = np.sort([channel_name_to_index(channel) for channel in CHANNEL_NAMES
                                      if channel not in NON_PHYSIOLOGICAL_CHANNELS])
 
-    output_file_paths = []
-    for idx, file_name in enumerate(tqdm(file_names, unit='file')):
+    run_iterator = file_names_timeseries_to_iterator(file_names, runs)
+
+    preprocessed_runs = []
+    for idx, run in enumerate(tqdm(run_iterator, unit='run')):
         # Load raw data from Raw folder
-        (session, file_sub_sess, sess_labels, fb_indexes) = open_file_pickle(PROJECT_RAW_FOLDER + file_name + ".p")
+        if file_names:
+            run = open_file_pickle(PROJECT_RAW_FOLDER + run + ".p")
+
+        run.filtered_metadata = construct_metadata()
+        folder_name = PROJECT_PREPROCESSED_FOLDER + metadata2path_code(run.filtered_metadata) + "/"
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+
+        output_file_path = folder_name + run.file_name + ".p"
+
+        if os.path.exists(output_file_path) and not override_save:
+            preprocessed_run = open_file_pickle(output_file_path)
+            preprocessed_runs.append(preprocessed_run)
+            continue
 
         # ------------------------ Remove non phisiological signals ------------------------
-        session = session[physiological_indices, :]
+        run.session = run.session[physiological_indices, :]
 
         # ------------------------ Bandpass filter ------------------------
         if USE_BANDPASS:
-            session = butter_bandpass_filter(session, BANDPASS_LOW_FREQ, BANDPASS_HIGH_FREQ, SAMPLING_FREQUENCY,
-                                             order=BANDPASS_ORDER,
-                                             axis=1)
+            run.session = butter_bandpass_filter(run.session, BANDPASS_LOW_FREQ, BANDPASS_HIGH_FREQ, SAMPLING_FREQUENCY,
+                                                 order=BANDPASS_ORDER,
+                                                 axis=1)
 
         if EXCLUDE_CHANNELS and INCLUDE_CHANNELS:
             raise ValueError("Specify either only include channels or only exclude channels")
         if EXCLUDE_CHANNELS:  # If dictionary is not empty: Exclusion criterion
             channels_indexes = np.sort([channel_name_to_physiological_index(channel) for channel in CHANNEL_NAMES if
                                         channel not in EXCLUDE_CHANNELS])
-            session = session[channels_indexes, :]
+            run.session = run.session[channels_indexes, :]
         elif INCLUDE_CHANNELS:  # If dictionary is not empty: Inclusion criterion
             channels_indexes = np.sort(
-                [channel_name_to_physiological_index(channel) for channel in CHANNEL_NAMES if channel in INCLUDE_CHANNELS])
-            session = session[channels_indexes, :]
-
+                [channel_name_to_physiological_index(channel) for channel in CHANNEL_NAMES if
+                 channel in INCLUDE_CHANNELS])
+            run.session = run.session[channels_indexes, :]
 
         # ------------------------ Save pre-processed data ------------------------
-        filtered_metadata = {}
-        # Add metadata elements
-        if USE_BANDPASS:
-            bandpass_metadata = {'low_freq': BANDPASS_LOW_FREQ, 'high_freq': BANDPASS_HIGH_FREQ, 'fs': SAMPLING_FREQUENCY,
-                                 'order': BANDPASS_ORDER}
 
-            filtered_metadata.update({"bandpass_filter": bandpass_metadata})
-
-        if EXCLUDE_CHANNELS or INCLUDE_CHANNELS:
-            if EXCLUDE_CHANNELS:
-                num_channels = len(CHANNEL_NAMES) - len(NON_PHYSIOLOGICAL_CHANNELS) - len(EXCLUDE_CHANNELS)
-            else:
-                num_channels = len(INCLUDE_CHANNELS)
-
-            channel_selection = {'exclude_channels': EXCLUDE_CHANNELS, 'include_channels': INCLUDE_CHANNELS,
-                                 'num_channels': num_channels}
-
-            filtered_metadata.update({"channel_selection": channel_selection})
-
-        folder_name = metadata2path_code(filtered_metadata) + "/"
-        file_path = PROJECT_PREPROCESSED_FOLDER + folder_name + file_name + ".p"
-        output_file_paths.append(file_path)
-        save_file_pickle((session, file_sub_sess, sess_labels, fb_indexes, filtered_metadata), file_path,
+        preprocessed_runs.append(run)
+        save_file_pickle(run, output_file_path,
                          force_overwrite=True)
-    return output_file_paths
+    return preprocessed_runs
 
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=4, axis=-1):

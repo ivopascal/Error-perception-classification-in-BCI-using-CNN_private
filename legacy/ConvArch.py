@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from Models.model_core import ModelCore
+from src.Models.model_core import ModelCore
 
 
 class ConvArch(ModelCore):

@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-from util.metrics import binary_acc
+from src.util.metrics import binary_acc
 
 
 class ModelCore(pl.LightningModule):

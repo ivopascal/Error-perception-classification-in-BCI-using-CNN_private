@@ -3,8 +3,8 @@ from train_test import train
 
 
 def main():
-    preprocessed_file_path = preprocess()
-    train(preprocessed_file_path)
+    dataset = preprocess()
+    train(dataset=dataset)
 
 
 if __name__ == "__main__":
