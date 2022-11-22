@@ -8,13 +8,21 @@ import pickle as pk
 from settings import PROJECT_BALANCED_FOLDER, PROJECT_EPOCHED_FOLDER
 
 
+def save_file_pickle(data, path, force_overwrite=False):
+    if os.path.exists(path) and not force_overwrite:
+        return False
+    with open(path, "wb") as f:
+        pk.dump(data, f)
+    return True
+
+
 def open_file_pickle(path):
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            print("File \"{}\" uploaded successfully!".format(os.path.basename(path)))
-            return pk.load(f)
-    else:
+    if not os.path.exists(path):
         raise ValueError(f"File {path} does not exist!")
+
+    with open(path, "rb") as f:
+        return pk.load(f)
+
 
 def get_available_pickle_folders(path: str, folder_type="") -> Tuple[List[str], List[str]]:
     available_files = []
@@ -36,7 +44,8 @@ def build_dataset(variant: str = "Balanced", filepath: Optional[str] = None):
             data, data_labels, filtered_metadata, epoched_metadata, balanced_metadata = open_file_pickle(filepath)
         else:
             available_files, _ = get_available_pickle_folders(PROJECT_BALANCED_FOLDER, "Balanced")
-            data, data_labels, filtered_metadata, epoched_metadata, balanced_metadata = open_file_pickle(available_files[0])
+            data, data_labels, filtered_metadata, epoched_metadata, balanced_metadata = open_file_pickle(
+                available_files[0])
 
     elif variant == "Epoched":
         if filepath:

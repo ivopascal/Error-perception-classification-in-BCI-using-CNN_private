@@ -106,7 +106,7 @@ class Net(pl.LightningModule):
   # ---------- Train ----------
   def training_step(self, train_batch, batch_idx):
       x, y = train_batch
-      y = y[:,4] # get only label
+      y = y[:, 4] # get only label
 
       # output: 1 node (logit. To classify first pass through sigmoid and use 0.5 as threshold [done in binary_acc])
       y_logits = self.forward(x)

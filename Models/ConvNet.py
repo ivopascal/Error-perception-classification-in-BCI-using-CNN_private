@@ -1,9 +1,4 @@
-import pytorch_lightning as pl
-import torch
 import torch.nn as nn
-from torch.nn import functional as F
-from torch.utils.data import DataLoader
-import random
 
 from Models.model_core import ModelCore
 
@@ -17,10 +12,9 @@ class ConvNet2C(ModelCore):
             'batch_size': 120,
             'test_batch_size': 1,
             'max_num_epochs': 1200,
-            'optimizer': 'SGD',  # SGD, Adam, ...
-            'learning_rate': 0.0001,  # Learning rate for Optimizer
-            # 'momentum': 0.9,                 # Momentum for Optimizer
-            'weight_decay': 0.002,  # Weight decay (L2 regularization)
+            'optimizer': 'SGD',
+            'learning_rate': 0.0001,
+            'weight_decay': 0.002,  # L2 regularization
         }
 
     @staticmethod
@@ -63,8 +57,11 @@ class ConvNet2C(ModelCore):
                 # paper describes 1x1 pooling but this wouldn't do anything
                 # nn.MaxPool2d(kernel_size=(1, 1), stride=(1, 1)),
                 nn.Flatten(),
-                nn.Linear(64 * 12, 2),  # 768 for 60 samples
+                nn.Linear(64 * 12, self.get_n_output_nodes()),  # 768 for 60 samples
         )
+
+    def get_n_output_nodes(self):
+        return 2
 
 
 class ConvNet64C(ConvNet2C):
@@ -77,7 +74,7 @@ class ConvNet64C(ConvNet2C):
                 nn.ELU(),
                 nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
                 nn.Flatten(),
-                nn.Linear(25344, 2),  # 25344 for 600ms, 2304 for 64 samples
+                nn.Linear(25344, self.get_n_output_nodes()),  # 25344 for 600ms, 2304 for 64 samples
         )
 
     @staticmethod

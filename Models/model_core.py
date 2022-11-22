@@ -1,4 +1,3 @@
-import random
 from abc import abstractmethod
 
 import pytorch_lightning as pl
@@ -47,6 +46,10 @@ class ModelCore(pl.LightningModule):
     def create_model_architecture(self):
         raise NotImplementedError
 
+    @abstractmethod
+    def get_n_output_nodes(self):
+        raise NotImplementedError
+
     def forward(self, x):
         x = x.float()
 
@@ -62,9 +65,16 @@ class ModelCore(pl.LightningModule):
         y = y[:, 4]  # get only label
         y_logits = self.forward(x)
 
+        if self.get_n_output_nodes() == 1:
+            y_logits = y_logits.view(y_logits.shape[0])
+            y = y.type_as(y_logits)
+            acc = binary_acc(y_logits, y)
+        elif self.get_n_output_nodes() == 2:
+            y_hat = torch.round(F.softmax(y_logits, dim=-1))
+            acc = binary_acc(y_hat, y)
+        else:
+            raise ValueError("Outputs with more than 2 nodes have not been considered.")
         loss = self.loss_function(y_logits, y)
-        y_hat = torch.round(F.softmax(y_logits, dim=-1))
-        acc = binary_acc(y_hat, y)
 
         logs = {
             f'loss_{name}': loss,
@@ -88,8 +98,20 @@ class ModelCore(pl.LightningModule):
         x, y_all = batch
         y = y_all[:, 4]  # get only label
         y_logits = self.forward(x)
-        y_hat = torch.round(F.softmax(y_logits, dim=-1))
-        acc = binary_acc(y_hat, y)
+
+        if self.get_n_output_nodes() == 1:
+            y_logits = y_logits.view(y_logits.shape[0])
+            y = y.type_as(y_logits)
+            acc = binary_acc(y_logits, y)
+            y_predicted = torch.sigmoid(y_logits)
+            y_predicted[y_predicted >= 0.5] = 1.0
+            y_predicted[y_predicted < 0.5] = 0.0
+        elif self.get_n_output_nodes() == 2:
+            y_hat = torch.round(F.softmax(y_logits, dim=-1))
+            acc = binary_acc(y_hat, y)
+            y_predicted = torch.tensor([int(x[0] == 0) for x in y_hat])
+        else:
+            raise ValueError("Output nodes larger than 2 have not been considered")
 
         # Specificy the subject from where this sample comes from:
         subj = y_all[:, 0].tolist()
@@ -103,7 +125,7 @@ class ModelCore(pl.LightningModule):
         output = {
             **log,
             'y_true': y.clone().detach(),
-            'y_predicted': torch.tensor([int(x[0] == 0) for x in y_hat])  # convert list of pairs to y_prediction
+            'y_predicted': y_predicted,
         }
         self.log_dict(log)
 
@@ -120,8 +142,8 @@ class ModelCore(pl.LightningModule):
 
     def test_epoch_end(self, outputs):
         test_acc = torch.stack([x['acc'] for x in outputs]).mean()
-        test_y_true = torch.stack([x['y_true'] for x in outputs])
-        test_y_predicted = torch.stack([x['y_predicted'] for x in outputs])
+        self.test_y_true = torch.stack([x['y_true'] for x in outputs])
+        self.test_y_predicted = torch.stack([x['y_predicted'] for x in outputs])
 
         # Get accuracy per subject
         test_acc_subj = [0] * 6
@@ -137,7 +159,7 @@ class ModelCore(pl.LightningModule):
         logs = {'acc_test': test_acc}
         for i in range(6):
             subj_str = 'acc_subj_' + str(i + 1)
-            logs[subj_str] = self.test_acc_subj[i]
+            logs[subj_str] = test_acc_subj[i]
 
         self.log_dict(logs)
         return {'log': logs}
@@ -161,4 +183,5 @@ class ModelCore(pl.LightningModule):
                                     weight_decay=self.hyper_params['weight_decay'])
         return [optimizer]
 
-
+    def get_test_labels_predictions(self):
+        return (self.test_y_true, self.test_y_predicted)
