@@ -1,4 +1,7 @@
 # Project folders settings
+from src.Models.EegNet import EEGNet
+from src.Models.CorreiaNet import CorreiaNet
+
 PROJECT_ROOT_FOLDER = "/Users/ivopascal/Documents/PhD/Error-perception-classification-in-BCI-using-CNN/BCI_root/"
 PROJECT_DATASET_FOLDER = PROJECT_ROOT_FOLDER + "Datasets/Monitoring_error-related_potentials_2015/"
 PROJECT_DATASET_PICKLE_FOLDER = PROJECT_DATASET_FOLDER + "Datasets_pickle_files/"
@@ -22,10 +25,11 @@ SUBJECTS_IDX = range(1, 7)
 SESSIONS_IDX = [1, 2]
 RUNS_IDX = range(1, 11)
 SAMPLING_FREQUENCY = 512
+
+# Preprocessing settings
 FEEDBACK_WINDOW_OFFSET = 0
 FEEDBACK_WINDOW_SIZE = 600  # time in ms
 
-# Preprocessing settings
 USE_BANDPASS = True
 BANDPASS_ORDER = 6
 BANDPASS_LOW_FREQ = 1
@@ -33,3 +37,22 @@ BANDPASS_HIGH_FREQ = 10
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
+OVERRIDE_SAVES = False
+BALANCE_DATASET = True
+
+# Training settings
+EXPERIMENT_NAME = "CNN_baseline"
+DEBUG_MODE = False
+OVERRIDEN_HYPER_PARAMS = {
+    "max_num_epochs": 200
+}
+MODEL_CLASS = CorreiaNet
+
+# Validation is taken from train sessions (1), so test sessions (2) remain black box
+VALIDATION_PERCENTAGE = 0.1
+
+# Evaluate settings
+CKPT_PATH = 'last'
+
+SEED = 42  # Not all stochastic processes are seeded yet!
+CONTINUOUS_TEST_BATCH_SIZE = 2048

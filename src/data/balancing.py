@@ -41,11 +41,7 @@ def oversampling(file_path: Optional[str] = None, epoched_data: Optional[Epoched
     balanced_data = np.concatenate([epoched_data.data, data_clones])
     balanced_data_labels = np.concatenate([epoched_data.labels, data_labels_clones])
 
-    # ++++++++++++++++++++++++ Initialize variables ++++++++++++++++++++++++
-    # Store metadata related to the balancing of the data
-    # 'clones_added':   how many trials were added to the class?
     # 'added_to_class': to which class were the trials added? 0:ErrP; 1:NoErrP
-    # 'replicate_fold': how many times was the original class size increased by?
     balanced_metadata = {'clones_added': abs(diff), 'added_to_class': class_idx,
                          'replicate_fold': abs(diff) / minority_count}
 

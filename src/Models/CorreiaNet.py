@@ -12,8 +12,9 @@ class CorreiaNet(ModelCore):
             'test_batch_size': 1,
             'max_num_epochs': 1200,
             'optimizer': 'SGD',
-            'learning_rate': 0.0001,
-            'weight_decay': 0.002,  # L2 regularization
+            'learning_rate': 0.001,
+            'weight_decay': 0.00001,  # L2 regularization
+            'momentum': 0.9,
         }
 
     def explain_model(self):
@@ -36,10 +37,13 @@ class CorreiaNet(ModelCore):
     def create_model_architecture(self):
         return nn.Sequential(
             nn.BatchNorm2d(1),
+            # Block 1
             nn.Conv2d(1, 16, kernel_size=(1, 64), stride=(1, 20)),
+            # Block 2
             nn.Conv2d(16, 16, kernel_size=(64, 1)),
             nn.BatchNorm2d(16),
             nn.ELU(),
+            # FC
             nn.Flatten(),
             nn.Dropout(p=0.2),
             nn.Linear(208, self.get_n_output_nodes()),

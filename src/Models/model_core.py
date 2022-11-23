@@ -5,8 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-
-from src.util.metrics import binary_acc
+from torchmetrics import Accuracy
 
 
 class ModelCore(pl.LightningModule):
@@ -27,6 +26,8 @@ class ModelCore(pl.LightningModule):
 
         self.model = self.create_model_architecture()
         self.loss_function = self.get_loss_function()
+
+        self.accuracy = Accuracy()
 
     def get_hyperparams(self):
         return self.hyper_params
@@ -67,14 +68,14 @@ class ModelCore(pl.LightningModule):
 
         if self.get_n_output_nodes() == 1:
             y_logits = y_logits.view(y_logits.shape[0])
-            y = y.type_as(y_logits)
-            acc = binary_acc(y_logits, y)
+            acc = self.accuracy(y_logits, y)
         elif self.get_n_output_nodes() == 2:
             y_hat = torch.round(F.softmax(y_logits, dim=-1))
-            acc = binary_acc(y_hat, y)
+            acc = self.accuracy(y_hat, y)
         else:
             raise ValueError("Outputs with more than 2 nodes have not been considered.")
-        loss = self.loss_function(y_logits, y)
+
+        loss = self.loss_function(y_logits, y.type_as(y_logits))
 
         logs = {
             f'loss_{name}': loss,
@@ -96,24 +97,27 @@ class ModelCore(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y_all = batch
-        y = y_all[:, 4]  # get only label
+        if isinstance(y_all, list):  # when doing continuous testing for some reason this is a list
+            y_all = torch.stack(y_all, axis=1)
+        y = y_all[:, 4].clone()
+        y[y == -1] = 0  # Set a value for OoD
         y_logits = self.forward(x)
 
         if self.get_n_output_nodes() == 1:
             y_logits = y_logits.view(y_logits.shape[0])
-            y = y.type_as(y_logits)
-            acc = binary_acc(y_logits, y)
+            acc = self.accuracy(y_logits, y)
             y_predicted = torch.sigmoid(y_logits)
-            y_predicted[y_predicted >= 0.5] = 1.0
-            y_predicted[y_predicted < 0.5] = 0.0
+            # Temporarily commenting this out for ROC curve
+            # y_predicted[y_predicted >= 0.5] = 1.0
+            # y_predicted[y_predicted < 0.5] = 0.0
         elif self.get_n_output_nodes() == 2:
             y_hat = torch.round(F.softmax(y_logits, dim=-1))
-            acc = binary_acc(y_hat, y)
+            acc = self.accuracy(y_hat, y)
             y_predicted = torch.tensor([int(x[0] == 0) for x in y_hat])
         else:
             raise ValueError("Output nodes larger than 2 have not been considered")
 
-        # Specificy the subject from where this sample comes from:
+        # Specify the subject from where this sample comes from:
         subj = y_all[:, 0].tolist()
         subj_str = 'acc_' + str(subj[0])
 
@@ -174,10 +178,14 @@ class ModelCore(pl.LightningModule):
         return DataLoader(self.test_dataset, batch_size=self.hyper_params['test_batch_size'], num_workers=8)
 
     def configure_optimizers(self):
-        # Use Stochastic Gradient Descent
-        optimizer = torch.optim.SGD(self.parameters(),
-                                    lr=self.hyper_params['learning_rate'],
-                                    weight_decay=self.hyper_params['weight_decay'])
+        if self.hyper_params["optimizer"] == "SGD":
+            optimizer = torch.optim.SGD(self.parameters(),
+                                        lr=self.hyper_params['learning_rate'],
+                                        weight_decay=self.hyper_params['weight_decay'])
+        if self.hyper_params["optimizer"] == "Adam":
+            optimizer = torch.optim.Adam(self.parameters(),
+                                         betas=self.hyper_params['betas'],
+                                         weight_decay=self.hyper_params['weight_decay'])
         return [optimizer]
 
     def get_test_labels_predictions(self):

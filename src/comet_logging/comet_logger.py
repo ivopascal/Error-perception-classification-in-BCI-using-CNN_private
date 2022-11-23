@@ -29,18 +29,6 @@ def get_cometlogger() -> Tuple[pl.loggers.CometLogger, str]:
 
 def perform_basic_logging(comet_logger, train_set, val_set, test_set, model):
     comet_logger.auto_output_logging = "simple"
-    # train_file = open("train_file.p", 'wb')
-    # val_file = open("val_file.p", 'wb')
-    # test_file = open("test_file.p", 'wb')
-    # pk.dump(train_set, train_file)
-    # pk.dump(val_set, val_file)
-    # pk.dump(test_set, test_file)
-    # comet_logger.experiment.log_asset(file_data="train_file.p", file_name="train_file.p", overwrite=True)
-    # comet_logger.experiment.log_asset(file_data="val_file.p", file_name="val_file.p", overwrite=True)
-    # comet_logger.experiment.log_asset(file_data="test_file.p", file_name="test_file.p", overwrite=True)
-    # train_file.close()
-    # val_file.close()
-    # test_file.close()
 
     comet_logger.experiment.log_html(model.explain_model())
 

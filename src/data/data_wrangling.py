@@ -65,6 +65,7 @@ def load_dataset_from_csv_to_pickle(override_saved_files=True) -> List[TimeSerie
         if os.path.exists(save_path) and not override_saved_files:
             datasets.append(open_file_pickle(save_path))
             continue
+
         file_path = LOCAL_DATASET_ALL_FOLDER + file_name + ".csv"
         file_sub_sess_run = [int(s) for s in re.split('(\d+)', file_name) if s.isdigit()]
         # Read file and convert to Numpy (transpose to put Channels in the first axis and Time in the second axis)
@@ -161,7 +162,7 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
     return preprocessed_runs
 
 
-def butter_bandpass_filter(data, lowcut, highcut, fs, order=4, axis=-1):
+def butter_bandpass_filter(data, lowcut, highcut, fs, order, axis=-1):
     # Correct for forward-backward filtering (doubles the order)
     order = math.floor(order / 2)
     # Design

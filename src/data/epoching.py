@@ -9,10 +9,7 @@ from tqdm import tqdm
 from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE, SAMPLING_FREQUENCY
 from src.data.util import file_names_timeseries_to_iterator
 from src.util.dataclasses import TimeSeriesRun, EpochedDataSet
-
-
-def milliseconds_to_samples(milliseconds: int, sampling_frequency: int = SAMPLING_FREQUENCY) -> int:
-    return int(milliseconds * sampling_frequency / 1000)
+from src.util.util import milliseconds_to_samples
 
 
 def epoch_data(file_names: Optional[List[str]] = None, runs: Optional[List[TimeSeriesRun]] = None,

@@ -17,3 +17,17 @@ class View(nn.Module):
         out = x.view(shape)
         print(out.shape)
         return out
+
+
+class Permute(nn.Module):
+    # torch.Tensor.view() implemented as a NN layer
+    def __init__(self, permutation):
+        super().__init__()
+        self.permutation = permutation
+
+    def __repr__(self):
+        return f'View{self.shape}'
+
+    def forward(self, x):
+        out = x.permute(*self.permutation)
+        return out
