@@ -1,7 +1,7 @@
 import math
 import os
 from functools import cache
-from typing import List
+from typing import List, Tuple
 
 import pandas as pd
 import numpy as np
@@ -11,7 +11,7 @@ from tqdm import tqdm
 from scipy.signal import butter, sosfiltfilt
 
 from src.data.build_dataset import save_file_pickle, open_file_pickle
-from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX, \
+from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX,\
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
     NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER
 from src.data.util import file_names_timeseries_to_iterator
@@ -109,7 +109,7 @@ def construct_metadata():
 
 
 def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = None, override_save=True)\
-        -> List[TimeSeriesRun]:
+        -> Tuple[List[TimeSeriesRun], str]:
     physiological_indices = np.sort([channel_name_to_index(channel) for channel in CHANNEL_NAMES
                                      if channel not in NON_PHYSIOLOGICAL_CHANNELS])
 
@@ -159,7 +159,7 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
         preprocessed_runs.append(run)
         save_file_pickle(run, output_file_path,
                          force_overwrite=True)
-    return preprocessed_runs
+    return preprocessed_runs, os.path.dirname(output_file_path)
 
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order, axis=-1):

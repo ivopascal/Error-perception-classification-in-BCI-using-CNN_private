@@ -5,7 +5,8 @@ from src.util.nn_modules import Permute
 
 
 class EEGNet(ModelCore):
-    # This is currently getting a train acc of 0.5 -> i.e. random guess
+    # This is able to overfit to session 1, failing to generalise to session 2
+    # Session 1 val = 0.95, but session 2 acc = 0.729
 
     def get_default_hyperparameters(self, test_dataset):
         return {
@@ -65,3 +66,11 @@ class EEGNet(ModelCore):
 
     def get_loss_function(self):
         return nn.BCELoss()
+
+
+class BayesianEEGNet(EEGNet):
+    def get_default_hyperparameters(self, test_dataset):
+        hyper_params = super().get_default_hyperparameters(test_dataset)
+        hyper_params["bayesian_forward_passes"] = 10  # 50 is the upper limit to stay at 512 Hz online
+        hyper_params["test_batch_size"] = 100
+        return hyper_params

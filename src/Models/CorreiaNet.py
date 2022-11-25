@@ -54,3 +54,11 @@ class CorreiaNet(ModelCore):
 
     def get_n_output_nodes(self):
         return 1
+
+
+class BayesianCorreiaNet(CorreiaNet):
+    def get_default_hyperparameters(self, test_dataset):
+        hyper_params = super().get_default_hyperparameters(test_dataset)
+        hyper_params["bayesian_forward_passes"] = 100  # Fast model = more passes within 512Hz
+        hyper_params["test_batch_size"] = 100
+        return hyper_params

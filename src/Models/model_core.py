@@ -1,11 +1,14 @@
 from abc import abstractmethod
 
+import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from torchmetrics import Accuracy
+
+from src.util.nn_modules import enable_dropout
 
 
 class ModelCore(pl.LightningModule):
@@ -64,6 +67,7 @@ class ModelCore(pl.LightningModule):
     def calculate_loss_and_accuracy(self, train_batch, name):
         x, y = train_batch
         y = y[:, 4]  # get only label
+
         y_logits = self.forward(x)
 
         if self.get_n_output_nodes() == 1:
@@ -101,19 +105,22 @@ class ModelCore(pl.LightningModule):
             y_all = torch.stack(y_all, axis=1)
         y = y_all[:, 4].clone()
         y[y == -1] = 0  # Set a value for OoD
-        y_logits = self.forward(x)
+
+        if self.hyper_params.get("bayesian_forward_passes"):
+            y_logits, _ = self.get_mc_predictions(x)
+        else:
+            y_logits = self.forward(x)
 
         if self.get_n_output_nodes() == 1:
             y_logits = y_logits.view(y_logits.shape[0])
             acc = self.accuracy(y_logits, y)
             y_predicted = torch.sigmoid(y_logits)
-            # Temporarily commenting this out for ROC curve
-            # y_predicted[y_predicted >= 0.5] = 1.0
-            # y_predicted[y_predicted < 0.5] = 0.0
+
         elif self.get_n_output_nodes() == 2:
             y_hat = torch.round(F.softmax(y_logits, dim=-1))
             acc = self.accuracy(y_hat, y)
             y_predicted = torch.tensor([int(x[0] == 0) for x in y_hat])
+
         else:
             raise ValueError("Output nodes larger than 2 have not been considered")
 
@@ -167,6 +174,16 @@ class ModelCore(pl.LightningModule):
 
         self.log_dict(logs)
         return {'log': logs}
+
+    def get_mc_predictions(self, x):
+        all_predictions = []
+        for i in range(self.hyper_params['bayesian_forward_passes']):
+            enable_dropout(self.model)
+            batch_prediction = self.forward(x)
+            all_predictions.append(batch_prediction)
+
+        all_predictions = torch.stack(all_predictions)
+        return all_predictions.mean(dim=0), all_predictions.var(axis=0)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.hyper_params['batch_size'], num_workers=8, shuffle=True)

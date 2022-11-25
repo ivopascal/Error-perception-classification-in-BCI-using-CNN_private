@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+from continuous import test_continuous
 from src.comet_logging.comet_logger import get_cometlogger, perform_basic_logging
 import pytorch_lightning as pl
 import time
@@ -17,18 +18,18 @@ from src.util.dataclasses import EpochedDataSet
 DEBUG_MODE = False
 
 
-def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedDataSet] = None):
+def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedDataSet] = None, continous_dataset_path=None):
     train_set, val_set, test_set = build_dataset(dataset_file_path, dataset)
 
     experiment_creation_time = datetime.now().strftime("[%Y-%m-%d,%H:%M]")
     model = MODEL_CLASS(train_set, test_set, val_set, hyperparams=OVERRIDEN_HYPER_PARAMS)
-    dm = DataModule(train_set, val_set, test_set, batch_size=model.hyper_params["batch_size"])
+    dm = DataModule(train_set, val_set, test_set, batch_size=model.hyper_params["batch_size"],
+                    test_batch_size=model.hyper_params.get("test_batch_size"))
     comet_logger, _ = get_cometlogger()
 
     trainer = pl.Trainer(
         max_epochs=model.hyper_params['max_num_epochs'],
         logger=comet_logger,
-        fast_dev_run=DEBUG_MODE,
         accelerator="mps",
         devices=1,
         precision=32,
@@ -54,9 +55,16 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
 
     # Log the current model (provides downloadable link)
     comet_logger.experiment.log_model(EXPERIMENT_NAME, model_save_path)
-    comet_logger.experiment.log_asset(EXPERIMENT_NAME, 'settings.py')
+    comet_logger.experiment.log_code('settings.py')
 
     evaluate_model(trainer, dm, model, comet_logger)
+    test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
+    if model.hyper_params.get("bayesian_forward_passes"):
+        model.hyper_params["bayesian_forward_passes"] = 50
+        test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
+
+        model.hyper_params["bayesian_forward_passes"] = None
+        test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
 
     comet_logger.experiment.end()
 

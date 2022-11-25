@@ -12,8 +12,10 @@ def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_
     trainer.test(model=model, datamodule=dm, ckpt_path=CKPT_PATH)
     (y_true, y_predicted) = model.get_test_labels_predictions()
 
-    y_true = y_true.reshape(-1)
-    y_predicted = y_predicted.reshape(-1)
+    y_true = y_true.reshape(-1).clone().to('cpu')
+    y_predicted = y_predicted.reshape(-1).clone().to('cpu')
+    y_predicted[y_predicted > 0.5] = 1
+    y_predicted[y_predicted <= 0.5] = 0
 
     y_true_matrix, y_predicted_matrix = [], []
     for i in range(len(y_true)):
@@ -28,8 +30,7 @@ def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_
                                                  labels=["ErrP", "No ErrP"],
                                                  y_true=y_true_matrix,
                                                  y_predicted=y_predicted_matrix)
-    y_predicted = y_predicted.to('cpu')
-    y_true = y_true.to('cpu')
+
     tp, fp, tn, fn, support = stat_scores(y_predicted, y_true)
 
     comet_logger.experiment.log_metric("true_positives", tp)

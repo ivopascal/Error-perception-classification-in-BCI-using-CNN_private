@@ -31,3 +31,10 @@ class Permute(nn.Module):
     def forward(self, x):
         out = x.permute(*self.permutation)
         return out
+
+
+def enable_dropout(model: nn.Module):
+    """ Function to enable the dropout layers during test-time """
+    for m in model.modules():
+        if m.__class__.__name__.startswith('Dropout'):
+            m.train()
