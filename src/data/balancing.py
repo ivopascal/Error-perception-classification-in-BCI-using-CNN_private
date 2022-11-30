@@ -1,7 +1,7 @@
 import random
 from typing import Optional
 
-from src.data.build_dataset import open_file_pickle, save_file_pickle
+from src.data.util import open_file_pickle, save_file_pickle
 import numpy as np
 
 from src.data.data_wrangling import metadata2path_code

@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Optional
+import numpy as np
+from torch import Tensor
 
 
 @dataclass
@@ -20,3 +22,31 @@ class TimeSeriesRun:
     feedback_indices: Any = None
     filtered_metadata: Any = None
     file_name: Optional[str] = None
+
+
+@dataclass
+class StatScores:
+    tp: int
+    fp: int
+    tn: int
+    fn: int
+    support: int
+
+
+@dataclass
+class EvaluationMetrics:
+    y_true: Tensor
+    y_predicted: Tensor
+    y_variance: Tensor
+    y_in_distribution: Tensor
+    y_true_matrix: np.array
+    y_predicted_matrix: np.array
+    statscores: StatScores
+    precision: Tensor
+    recall: Tensor
+    negative_predictive_value: float
+    accuracy_conf_matrix: float
+    f1_score: Tensor
+    mcc: float
+    n_mcc: float
+

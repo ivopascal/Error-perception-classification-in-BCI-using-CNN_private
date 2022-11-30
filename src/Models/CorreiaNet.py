@@ -47,10 +47,11 @@ class CorreiaNet(ModelCore):
             nn.Flatten(),
             nn.Dropout(p=0.2),
             nn.Linear(208, self.get_n_output_nodes()),
+            nn.Sigmoid()
         )
 
     def get_loss_function(self):
-        return nn.BCEWithLogitsLoss()
+        return nn.BCELoss()
 
     def get_n_output_nodes(self):
         return 1

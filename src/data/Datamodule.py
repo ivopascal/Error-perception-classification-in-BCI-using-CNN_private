@@ -31,8 +31,12 @@ class ContinuousDataSet(IterableDataset):
     def __getitem__(self, index) -> T_co:
         pass
 
-    def __init__(self, data_source):
+    def __init__(self, data_source, interval):
         self.data_source = data_source
+        self.interval = interval
+
+        if self.interval % 2:
+            print("Warning: setting an odd interval rounds it down to the nearest even number!")
 
     def __iter__(self):
         return iter(self.generator())
@@ -40,16 +44,20 @@ class ContinuousDataSet(IterableDataset):
     def generator(self):
         window_size = milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
         for x, y in zip(*self.data_source):
-            for i in range(len(y[4]) - window_size):
-                yield x[:, i: i + window_size], y[:4] + [y[4][i]]
+            for i in range(0, len(y[4]) - window_size, self.interval):
+                if self.interval == 1:
+                    yield x[:, i: i + window_size], y[:4] + [y[4][i]]
+                else:
+                    half_interval = int(self.interval / 2)
+                    yield x[:, i: i + window_size], y[:4] + [max(y[4][max(i-half_interval, 0) : i + half_interval])]
 
 
 class ContinuousDataModule(pl.LightningDataModule):
-    def __init__(self, train_set, val_set, test_set, batch_size):
+    def __init__(self, train_set, val_set, test_set, batch_size, interval=0):
         super().__init__()
-        self.train_set = ContinuousDataSet(train_set)
-        self.val_set = ContinuousDataSet(val_set)
-        self.test_set = ContinuousDataSet(test_set)
+        self.train_set = ContinuousDataSet(train_set, interval)
+        self.val_set = ContinuousDataSet(val_set, interval)
+        self.test_set = ContinuousDataSet(test_set, interval)
         self.batch_size = batch_size
 
     def train_dataloader(self):

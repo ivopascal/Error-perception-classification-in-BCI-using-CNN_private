@@ -1,12 +1,16 @@
+from datetime import datetime
+
 import torch
 import pytorch_lightning as pl
-from matplotlib import pyplot as plt
 
-from settings import PROJECT_MODEL_SAVES_FOLDER, PROJECT_IMAGES_FOLDER, EXPERIMENT_NAME, DEBUG_MODE
+from settings import PROJECT_MODEL_SAVES_FOLDER, DEBUG_MODE, PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME, \
+    CONTINUOUS_TESTING_INTERVAL
 from src.Models.CorreiaNet import CorreiaNet
 from src.data.Datamodule import ContinuousDataModule
 from src.data.build_dataset import build_continuous_dataset
-from sklearn.metrics import roc_curve, auc
+from src.data.util import save_file_pickle
+
+from src.evaluation.evaluate import calculate_metrics, log_evaluation_metrics_to_comet
 
 MODEL_NAME = "CNN_baseline_[2022-11-23,15:27].pt"
 MODEL_PATH = PROJECT_MODEL_SAVES_FOLDER + MODEL_NAME
@@ -31,7 +35,9 @@ def test_continuous(model_path=None, model=None, comet_logger=None, dataset_fold
     if DEBUG_MODE:
         test_set = test_set[0][:1], test_set[1][:1]
 
-    dm = ContinuousDataModule(train_set, val_set, test_set, batch_size=model.hyper_params["batch_size"])
+    dm = ContinuousDataModule(train_set, val_set, test_set,
+                              batch_size=model.hyper_params["batch_size"],
+                              interval=CONTINUOUS_TESTING_INTERVAL)
 
     trainer = pl.Trainer(
         accelerator="mps",
@@ -39,35 +45,21 @@ def test_continuous(model_path=None, model=None, comet_logger=None, dataset_fold
         precision=32,
     )
     print("Testing against continuous data...")
-    trainer.test(model, datamodule=dm)
+    metrics = calculate_metrics(trainer, model, dm, ckpt_path=None)
+    log_evaluation_metrics_to_comet(metrics, comet_logger, prefix="Continuous_")
+    comet_logger.experiment.log_metric("Variance when correct ID",
+                                       metrics.y_variance[metrics.y_predicted == metrics.y_true & metrics.y_in_distribution].mean())
+    comet_logger.experiment.log_metric("Variance when incorrect ID",
+                                       metrics.y_variance[metrics.y_predicted != metrics.y_true & metrics.y_in_distribution].mean())
 
-    (y_true, y_predicted) = model.get_test_labels_predictions()
+    comet_logger.experiment.log_metric("Variance when ID",
+                                       metrics.y_variance[metrics.y_in_distribution].mean())
 
-    y_true = y_true.reshape(-1)
-    y_predicted = y_predicted.reshape(-1)
+    comet_logger.experiment.log_metric("Variance when OOD",
+                                       metrics.y_variance[~metrics.y_in_distribution].mean())
 
-    fpr, tpr, threshold = roc_curve(y_true.cpu().numpy(), y_predicted.cpu().numpy())
-    roc_auc = auc(fpr, tpr)
-
-    if model.hyper_params.get("bayesian_forward_passes"):
-        plt.plot(fpr, tpr, label=f"AUC bayesian {model.hyper_params['bayesian_forward_passes']} = {roc_auc}")
-    else:
-        plt.plot(fpr, tpr, label=f"AUC = {roc_auc}")
-    plt.plot([0, 1], [0, 1], linestyle="--")
-    plt.title("ROC curve on continuous domain. OoD labeled 0 class")
-    plt.legend()
-
-    if model.hyper_params.get("bayesian_forward_passes"):
-        image_file_name = PROJECT_IMAGES_FOLDER + EXPERIMENT_NAME + \
-                          f"-roc-curve-bayesian{model.hyper_params['bayesian_forward_passes']}.png"
-    else:
-        image_file_name = PROJECT_IMAGES_FOLDER + EXPERIMENT_NAME + "-roc-curve.png"
-
-    plt.savefig(image_file_name)
-
-    if comet_logger:
-        comet_logger.experiment.log_metric("Continuous ROC_AUC", roc_auc)
-        comet_logger.experiment.log_image(image_file_name)
+    save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
+                     f"metrics_{EXPERIMENT_NAME}_continuous_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")
 
 
 if __name__ == "__main__":

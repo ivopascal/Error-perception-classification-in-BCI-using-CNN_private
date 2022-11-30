@@ -10,7 +10,7 @@ import re
 from tqdm import tqdm
 from scipy.signal import butter, sosfiltfilt
 
-from src.data.build_dataset import save_file_pickle, open_file_pickle
+from src.data.util import save_file_pickle, open_file_pickle
 from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX,\
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
     NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER

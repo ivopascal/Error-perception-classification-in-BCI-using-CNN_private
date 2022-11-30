@@ -11,7 +11,7 @@ from src.data.Datamodule import DataModule
 from src.data.build_dataset import build_dataset
 from src.evaluation.evaluate import evaluate_model
 from settings import PROJECT_MODEL_SAVES_FOLDER, OVERRIDEN_HYPER_PARAMS, MODEL_CLASS, \
-    EXPERIMENT_NAME, CKPT_PATH
+    EXPERIMENT_NAME
 from src.util.dataclasses import EpochedDataSet
 
 
@@ -58,13 +58,8 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
     comet_logger.experiment.log_code('settings.py')
 
     evaluate_model(trainer, dm, model, comet_logger)
-    test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
-    if model.hyper_params.get("bayesian_forward_passes"):
-        model.hyper_params["bayesian_forward_passes"] = 50
-        test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
 
-        model.hyper_params["bayesian_forward_passes"] = None
-        test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
+    test_continuous(model=model, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
 
     comet_logger.experiment.end()
 

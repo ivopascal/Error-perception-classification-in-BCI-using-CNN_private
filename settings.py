@@ -10,6 +10,7 @@ PROJECT_BALANCED_FOLDER = PROJECT_DATASET_PICKLE_FOLDER + "Balanced/"
 PROJECT_EPOCHED_FOLDER = PROJECT_DATASET_PICKLE_FOLDER + "Epoched/"
 PROJECT_IMAGES_FOLDER = PROJECT_ROOT_FOLDER + "Images/"
 PROJECT_MODELS_FOLDER = PROJECT_ROOT_FOLDER + "Models/"
+PROJECT_RESULTS_FOLDER = PROJECT_ROOT_FOLDER + "Results/"
 PROJECT_MODEL_SAVES_FOLDER = PROJECT_MODELS_FOLDER + "Model Saves/"
 LOCAL_DATASET_ALL_FOLDER = PROJECT_DATASET_FOLDER + "all/"
 PROJECT_RAW_FOLDER = PROJECT_DATASET_PICKLE_FOLDER + "Raw/"
@@ -43,16 +44,17 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "BayesianCorreiaNet_Continuous"
-DEBUG_MODE = False
+EXPERIMENT_NAME = "Bayesian_EEGNet_Variance"
+DEBUG_MODE = True
 OVERRIDEN_HYPER_PARAMS = {
-    "max_num_epochs": 300
+    "max_num_epochs": 200,
+    "bayesian_forward_passes": 100
 }
 
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 10
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
-MODEL_CLASS = BayesianCorreiaNet
+MODEL_CLASS = BayesianEEGNet
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
@@ -62,3 +64,4 @@ CKPT_PATH = 'last'
 
 SEED = 42  # Not all stochastic processes are seeded yet!
 CONTINUOUS_TEST_BATCH_SIZE = 2048
+CONTINUOUS_TESTING_INTERVAL = 8

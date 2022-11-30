@@ -7,25 +7,9 @@ import pickle as pk
 
 from tqdm import tqdm
 
-from settings import VALIDATION_PERCENTAGE, SEED, FEEDBACK_WINDOW_SIZE
-from src.util.util import milliseconds_to_samples
+from settings import VALIDATION_PERCENTAGE, SEED
+from src.data.util import open_file_pickle
 from src.util.dataclasses import EpochedDataSet, TimeSeriesRun
-
-
-def save_file_pickle(data, path, force_overwrite=False):
-    if os.path.exists(path) and not force_overwrite:
-        return False
-    with open(path, "wb") as f:
-        pk.dump(data, f)
-    return True
-
-
-def open_file_pickle(path):
-    if not os.path.exists(path):
-        raise ValueError(f"File {path} does not exist!")
-
-    with open(path, "rb") as f:
-        return pk.load(f)
 
 
 def get_available_pickle_folders(path: str, folder_type="") -> Tuple[List[str], List[str]]:

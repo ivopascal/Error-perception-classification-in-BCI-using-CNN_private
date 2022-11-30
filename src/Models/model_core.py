@@ -107,14 +107,14 @@ class ModelCore(pl.LightningModule):
         y[y == -1] = 0  # Set a value for OoD
 
         if self.hyper_params.get("bayesian_forward_passes"):
-            y_logits, _ = self.get_mc_predictions(x)
+            y_logits, y_variance = self.get_mc_predictions(x)
         else:
             y_logits = self.forward(x)
+            y_variance = torch.zeros_like(y_logits)
 
         if self.get_n_output_nodes() == 1:
-            y_logits = y_logits.view(y_logits.shape[0])
-            acc = self.accuracy(y_logits, y)
-            y_predicted = torch.sigmoid(y_logits)
+            y_predicted = y_logits.view(y_logits.shape[0])
+            acc = self.accuracy(y_predicted, y)
 
         elif self.get_n_output_nodes() == 2:
             y_hat = torch.round(F.softmax(y_logits, dim=-1))
@@ -137,6 +137,8 @@ class ModelCore(pl.LightningModule):
             **log,
             'y_true': y.clone().detach(),
             'y_predicted': y_predicted,
+            'y_pred_variance': y_variance,
+            'y_in_distribution': y_all[:, 4] != -1,
         }
         self.log_dict(log)
 
@@ -155,6 +157,8 @@ class ModelCore(pl.LightningModule):
         test_acc = torch.stack([x['acc'] for x in outputs]).mean()
         self.test_y_true = torch.stack([x['y_true'] for x in outputs])
         self.test_y_predicted = torch.stack([x['y_predicted'] for x in outputs])
+        self.test_y_variance = torch.stack([x['y_pred_variance'] for x in outputs])
+        self.test_y_in_distribution = torch.stack([x['y_in_distribution'] for x in outputs])
 
         # Get accuracy per subject
         test_acc_subj = [0] * 6
@@ -199,11 +203,13 @@ class ModelCore(pl.LightningModule):
             optimizer = torch.optim.SGD(self.parameters(),
                                         lr=self.hyper_params['learning_rate'],
                                         weight_decay=self.hyper_params['weight_decay'])
-        if self.hyper_params["optimizer"] == "Adam":
+        elif self.hyper_params["optimizer"] == "Adam":
             optimizer = torch.optim.Adam(self.parameters(),
                                          betas=self.hyper_params['betas'],
                                          weight_decay=self.hyper_params['weight_decay'])
+        else:
+            raise ValueError(f"Unknown optimizer {self.hyper_params['optimizer'] } in model hyper_params")
         return [optimizer]
 
     def get_test_labels_predictions(self):
-        return self.test_y_true, self.test_y_predicted
+        return self.test_y_true, self.test_y_predicted, self.test_y_variance, self.test_y_in_distribution

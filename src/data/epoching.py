@@ -1,13 +1,13 @@
 import os.path
 from typing import List, Optional
 
-from src.data.build_dataset import save_file_pickle, open_file_pickle
+from src.data.util import open_file_pickle
 from src.data.data_wrangling import metadata2path_code
 import numpy as np
 from tqdm import tqdm
 
 from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE, SAMPLING_FREQUENCY
-from src.data.util import file_names_timeseries_to_iterator
+from src.data.util import file_names_timeseries_to_iterator, save_file_pickle
 from src.util.dataclasses import TimeSeriesRun, EpochedDataSet
 from src.util.util import milliseconds_to_samples
 
