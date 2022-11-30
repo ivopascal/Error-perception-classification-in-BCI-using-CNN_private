@@ -117,6 +117,7 @@ class ModelCore(pl.LightningModule):
             acc = self.accuracy(y_predicted, y)
 
         elif self.get_n_output_nodes() == 2:
+            raise NotImplementedError("2 output nodes is probably not correctly implemented now")
             y_hat = torch.round(F.softmax(y_logits, dim=-1))
             acc = self.accuracy(y_hat, y)
             y_predicted = torch.tensor([int(x[0] == 0) for x in y_hat])
@@ -124,13 +125,18 @@ class ModelCore(pl.LightningModule):
         else:
             raise ValueError("Output nodes larger than 2 have not been considered")
 
-        # Specify the subject from where this sample comes from:
-        subj = y_all[:, 0].tolist()
-        subj_str = 'acc_' + str(subj[0])
+        subj_accs = {}
+        for subj_index in range(1, 7):
+            if subj_index in y_all[:, 0]:
+                subj_accs[f"acc_{subj_index}"] = self.accuracy(
+                    y_predicted[y_all[:, 0] == subj_index],
+                    y[y_all[:, 0] == subj_index]
+                )
+
 
         log = {
             'acc': acc.clone().detach(),
-            subj_str: acc.clone().detach()
+            **subj_accs
         }
 
         output = {
@@ -140,7 +146,6 @@ class ModelCore(pl.LightningModule):
             'y_pred_variance': y_variance,
             'y_in_distribution': y_all[:, 4] != -1,
         }
-        self.log_dict(log)
 
         return output
 
@@ -173,7 +178,7 @@ class ModelCore(pl.LightningModule):
 
         logs = {'acc_test': test_acc}
         for i in range(6):
-            subj_str = 'acc_subj_' + str(i + 1)
+            subj_str = 'test_acc_subj_' + str(i + 1)
             logs[subj_str] = test_acc_subj[i]
 
         self.log_dict(logs)

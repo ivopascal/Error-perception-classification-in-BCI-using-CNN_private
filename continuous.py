@@ -32,7 +32,7 @@ def test_continuous(model_path=None, model=None, comet_logger=None, dataset_fold
         model.load_state_dict(torch.load(model_path))
         model.eval()
 
-    if DEBUG_MODE:
+    if False:  # DEBUG_MODE:
         test_set = test_set[0][:1], test_set[1][:1]
 
     dm = ContinuousDataModule(train_set, val_set, test_set,

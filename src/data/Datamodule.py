@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data.dataset import T_co
-
+import random
 from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TEST_BATCH_SIZE
 from src.util.util import milliseconds_to_samples
 
@@ -43,12 +43,12 @@ class ContinuousDataSet(IterableDataset):
 
     def generator(self):
         window_size = milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
-        for x, y in zip(*self.data_source):
-            for i in range(0, len(y[4]) - window_size, self.interval):
+        half_interval = int(self.interval / 2)
+        for x, y in random.shuffle(list(zip(*self.data_source)), ):
+            for i in random.shuffle(range(0, len(y[4]) - window_size, self.interval)):
                 if self.interval == 1:
                     yield x[:, i: i + window_size], y[:4] + [y[4][i]]
                 else:
-                    half_interval = int(self.interval / 2)
                     yield x[:, i: i + window_size], y[:4] + [max(y[4][max(i-half_interval, 0) : i + half_interval])]
 
 

@@ -1,3 +1,5 @@
+import random
+
 from src.Models.ConvNet import ConvNet64C
 from src.Models.EegNet import EEGNet, BayesianEEGNet
 from src.Models.CorreiaNet import CorreiaNet, BayesianCorreiaNet
@@ -48,7 +50,7 @@ EXPERIMENT_NAME = "Bayesian_EEGNet_Variance"
 DEBUG_MODE = True
 OVERRIDEN_HYPER_PARAMS = {
     "max_num_epochs": 200,
-    "bayesian_forward_passes": 100
+    "bayesian_forward_passes": 5
 }
 
 if DEBUG_MODE:
@@ -63,5 +65,6 @@ VALIDATION_PERCENTAGE = 0.1
 CKPT_PATH = 'last'
 
 SEED = 42  # Not all stochastic processes are seeded yet!
+random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 8
