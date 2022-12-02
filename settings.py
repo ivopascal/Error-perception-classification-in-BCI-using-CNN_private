@@ -46,17 +46,17 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "Bayesian_EEGNet_Variance"
+EXPERIMENT_NAME = "Bayesian_CorreiaNet_Variance"
 DEBUG_MODE = True
 OVERRIDEN_HYPER_PARAMS = {
     "max_num_epochs": 200,
-    "bayesian_forward_passes": 5
+    "bayesian_forward_passes": 50
 }
 
 if DEBUG_MODE:
-    OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 10
+    OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 100
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
-MODEL_CLASS = BayesianEEGNet
+MODEL_CLASS = BayesianCorreiaNet
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
@@ -67,4 +67,4 @@ CKPT_PATH = 'last'
 SEED = 42  # Not all stochastic processes are seeded yet!
 random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
-CONTINUOUS_TESTING_INTERVAL = 8
+CONTINUOUS_TESTING_INTERVAL = 10

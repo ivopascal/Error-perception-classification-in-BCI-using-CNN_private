@@ -13,14 +13,15 @@ from src.util.dataclasses import EvaluationMetrics, StatScores
 from sklearn.metrics import roc_curve, auc
 
 
-def calculate_metrics(trainer, model, datamodule, ckpt_path) -> EvaluationMetrics:
+def calculate_metrics(trainer, model: ModelCore, datamodule, ckpt_path) -> EvaluationMetrics:
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
-    y_true, y_predicted, y_variance, y_in_distribution = model.get_test_labels_predictions()
+    y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
 
     y_true = y_true.reshape(-1).clone().to('cpu')
     y_variance = y_variance.reshape(-1).clone().to('cpu')
     y_in_distribution = y_in_distribution.reshape(-1).clone().to('cpu')
     y_predicted = y_predicted.reshape(-1).clone().to('cpu')
+    y_subj_idx = y_subj_idx.reshape(-1).clone().to('cpu')
     binarized_y_predicted = y_predicted.clone()
     binarized_y_predicted[binarized_y_predicted > 0.5] = 1
     binarized_y_predicted[binarized_y_predicted <= 0.5] = 0
@@ -49,6 +50,7 @@ def calculate_metrics(trainer, model, datamodule, ckpt_path) -> EvaluationMetric
         y_predicted,
         y_variance,
         y_in_distribution,
+        y_subj_idx,
         y_true_matrix,
         y_predicted_matrix,
         StatScores(tp, fp, tn, fn, support),

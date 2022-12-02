@@ -60,7 +60,7 @@ def test_continuous(model_path=None, model=None, comet_logger=None, dataset_fold
 
     save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
                      f"metrics_{EXPERIMENT_NAME}_continuous_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")
-
+    print("waiting")
 
 if __name__ == "__main__":
     test_continuous(model_path=MODEL_PATH)

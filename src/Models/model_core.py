@@ -136,6 +136,7 @@ class ModelCore(pl.LightningModule):
 
         log = {
             'acc': acc.clone().detach(),
+            'subj_idx': y_all[:, 0],
             **subj_accs
         }
 
@@ -164,6 +165,7 @@ class ModelCore(pl.LightningModule):
         self.test_y_predicted = torch.stack([x['y_predicted'] for x in outputs])
         self.test_y_variance = torch.stack([x['y_pred_variance'] for x in outputs])
         self.test_y_in_distribution = torch.stack([x['y_in_distribution'] for x in outputs])
+        self.test_y_subj_idx = torch.stack([x['subj_idx'] for x in outputs])
 
         # Get accuracy per subject
         test_acc_subj = [0] * 6
@@ -217,4 +219,4 @@ class ModelCore(pl.LightningModule):
         return [optimizer]
 
     def get_test_labels_predictions(self):
-        return self.test_y_true, self.test_y_predicted, self.test_y_variance, self.test_y_in_distribution
+        return self.test_y_true, self.test_y_predicted, self.test_y_variance, self.test_y_in_distribution, self.test_y_subj_idx

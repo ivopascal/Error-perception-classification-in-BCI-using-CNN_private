@@ -39,6 +39,7 @@ class EvaluationMetrics:
     y_predicted: Tensor
     y_variance: Tensor
     y_in_distribution: Tensor
+    y_subj_idx: Tensor
     y_true_matrix: np.array
     y_predicted_matrix: np.array
     statscores: StatScores

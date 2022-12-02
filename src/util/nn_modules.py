@@ -26,7 +26,7 @@ class Permute(nn.Module):
         self.permutation = permutation
 
     def __repr__(self):
-        return f'View{self.shape}'
+        return f'Permute{self.permutation}'
 
     def forward(self, x):
         out = x.permute(*self.permutation)

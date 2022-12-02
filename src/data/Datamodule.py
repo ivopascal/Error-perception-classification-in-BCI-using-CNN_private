@@ -44,12 +44,19 @@ class ContinuousDataSet(IterableDataset):
     def generator(self):
         window_size = milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
         half_interval = int(self.interval / 2)
-        for x, y in random.shuffle(list(zip(*self.data_source)), ):
-            for i in random.shuffle(range(0, len(y[4]) - window_size, self.interval)):
+        data_source = list(zip(*self.data_source))
+        # random.shuffle(data_source)
+        for x, y in data_source:
+            indices = list(range(0, len(y[4]) - window_size, self.interval))
+            # random.shuffle(indices)
+            for i in indices:
                 if self.interval == 1:
                     yield x[:, i: i + window_size], y[:4] + [y[4][i]]
                 else:
-                    yield x[:, i: i + window_size], y[:4] + [max(y[4][max(i-half_interval, 0) : i + half_interval])]
+                    lower_half = max(i-half_interval, 0)
+                    upper_half = i + half_interval
+                    highest_label_in_interval = max(y[4][lower_half: upper_half])
+                    yield x[:, i: i + window_size], y[:4] + [highest_label_in_interval]
 
 
 class ContinuousDataModule(pl.LightningDataModule):
