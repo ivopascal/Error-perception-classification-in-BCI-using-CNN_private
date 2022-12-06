@@ -42,21 +42,19 @@ BANDPASS_HIGH_FREQ = 10
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
-OVERRIDE_SAVES = False
+OVERRIDE_SAVES = True
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "Bayesian_CorreiaNet_Variance"
-DEBUG_MODE = True
+EXPERIMENT_NAME = "Balanced20EnsembleCorreiaNet"
+DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
-    "max_num_epochs": 200,
-    "bayesian_forward_passes": 50
 }
 
 if DEBUG_MODE:
-    OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 100
+    OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
-MODEL_CLASS = BayesianCorreiaNet
+MODEL_CLASS = EEGNet
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
@@ -68,3 +66,5 @@ SEED = 42  # Not all stochastic processes are seeded yet!
 random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
+
+ENSEMBLE_SIZE = 20

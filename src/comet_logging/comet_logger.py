@@ -11,12 +11,6 @@ from settings import EXPERIMENT_NAME
 def get_cometlogger() -> Tuple[pl.loggers.CometLogger, str]:
     experiment_creation_time = datetime.datetime.now().strftime("[%Y-%m-%d,%H:%M]")
 
-    experiment = comet_ml.Experiment(
-        api_key="3xX4JIrZCsKBpMeFSsbQBfh0W",
-        project_name="bci-errp",
-        workspace="ivopascal",
-    )
-
     comet_logger = pl.loggers.CometLogger(
         api_key="3xX4JIrZCsKBpMeFSsbQBfh0W",
         project_name="bci-errp",

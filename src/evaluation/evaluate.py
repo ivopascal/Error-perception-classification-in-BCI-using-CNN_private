@@ -1,6 +1,8 @@
 import math
 from datetime import datetime
+from typing import List
 
+import torch
 from matplotlib import pyplot as plt
 import pytorch_lightning as pl
 from torchmetrics.functional import precision, f1_score, recall, stat_scores
@@ -13,10 +15,28 @@ from src.util.dataclasses import EvaluationMetrics, StatScores
 from sklearn.metrics import roc_curve, auc
 
 
+def calculate_metrics_ensemble(trainer, models: List[ModelCore], datamodule, ckpt_path) -> EvaluationMetrics:
+    all_y_predictions = []
+    for model in models:
+        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
+        y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
+        all_y_predictions.append(y_predicted)
+
+    all_y_predictions = torch.stack(all_y_predictions)
+    y_predicted = all_y_predictions.mean(dim=0)
+    y_variance = all_y_predictions.std(dim=0)
+
+    return build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx)
+
+
 def calculate_metrics(trainer, model: ModelCore, datamodule, ckpt_path) -> EvaluationMetrics:
     trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
     y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
 
+    return build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx)
+
+
+def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx) -> EvaluationMetrics:
     y_true = y_true.reshape(-1).clone().to('cpu')
     y_variance = y_variance.reshape(-1).clone().to('cpu')
     y_in_distribution = y_in_distribution.reshape(-1).clone().to('cpu')

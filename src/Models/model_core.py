@@ -104,7 +104,7 @@ class ModelCore(pl.LightningModule):
         if isinstance(y_all, list):  # when doing continuous testing for some reason this is a list
             y_all = torch.stack(y_all, axis=1)
         y = y_all[:, 4].clone()
-        y[y == -1] = 0  # Set a value for OoD
+        y[y == -1] = 1  # Set a value for OoD
 
         if self.hyper_params.get("bayesian_forward_passes"):
             y_logits, y_variance = self.get_mc_predictions(x)
