@@ -1,7 +1,7 @@
 import random
 
 from src.Models.ConvNet import ConvNet64C
-from src.Models.EegNet import EEGNet, BayesianEEGNet
+from src.Models.EegNet import EEGNet, BayesianEEGNet, ProperEEGNet
 from src.Models.CorreiaNet import CorreiaNet, BayesianCorreiaNet
 
 # Project folders settings
@@ -46,7 +46,7 @@ OVERRIDE_SAVES = True
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "Balanced20EnsembleCorreiaNet"
+EXPERIMENT_NAME = "CrossEntropy5ensembleProper_EEGNet"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -54,7 +54,7 @@ OVERRIDEN_HYPER_PARAMS = {
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
-MODEL_CLASS = EEGNet
+MODEL_CLASS = ProperEEGNet
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
@@ -67,4 +67,4 @@ random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
 
-ENSEMBLE_SIZE = 20
+ENSEMBLE_SIZE = 5

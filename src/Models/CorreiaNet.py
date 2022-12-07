@@ -38,7 +38,7 @@ class CorreiaNet(ModelCore):
         return nn.Sequential(
             nn.BatchNorm2d(1),
             # Block 1
-            nn.Conv2d(1, 16, kernel_size=(1, 64), stride=(1, 20)),
+            nn.Conv2d(1, 16, kernel_size=(1, 64)),  # , stride=(1, 20)),
             # Block 2
             nn.Conv2d(16, 16, kernel_size=(64, 1)),
             nn.BatchNorm2d(16),
@@ -46,7 +46,7 @@ class CorreiaNet(ModelCore):
             # FC
             nn.Flatten(),
             nn.Dropout(p=0.2),
-            nn.Linear(208, self.get_n_output_nodes()),
+            nn.Linear(3904, self.get_n_output_nodes()),  # originally 208
             nn.Sigmoid()
         )
 

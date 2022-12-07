@@ -1,7 +1,7 @@
 from src.Models.model_core import ModelCore
 import torch.nn as nn
 
-from src.util.nn_modules import Permute
+from src.util.nn_modules import Permute, DepthwiseConv2d, SeparableConv2d
 
 
 class EEGNet(ModelCore):
@@ -73,4 +73,44 @@ class BayesianEEGNet(EEGNet):
         hyper_params = super().get_default_hyperparameters(test_dataset)
         hyper_params["bayesian_forward_passes"] = 10  # 50 is the upper limit to stay at 512 Hz online
         hyper_params["test_batch_size"] = 100
+        return hyper_params
+
+
+class ProperEEGNet(EEGNet):
+    def create_model_architecture(self):
+        F1 = self.get_hyperparams()['F1']
+        D = self.get_hyperparams()['D']
+        sampling_rate = self.get_hyperparams()['sampling_rate']
+        F2 = F1 * D
+
+        return nn.Sequential(
+            Permute((0, 1, 3, 2)),
+            # Layer 1
+            nn.Conv2d(1, F1, (int(sampling_rate / 2), 1), padding=0),
+            nn.BatchNorm2d(F1, False),
+            DepthwiseConv2d(F1, depth_multiplier=D, bias=False, padding='valid'),
+            nn.BatchNorm2d(F2, False),
+            nn.ELU(),
+            nn.AvgPool2d((1, 4)),
+            nn.Dropout(0.25),
+
+            SeparableConv2d(F2, F2, (1, 16), bias=False),
+            nn.BatchNorm2d(F2, False),
+            nn.ELU(),
+
+            nn.AvgPool3d((1, F1, 1)),
+            nn.Dropout(0.25),
+
+            # FC Layer
+            nn.Flatten(),
+            nn.Linear(192, 1),
+            nn.Sigmoid(),
+        )
+
+    def get_default_hyperparameters(self, test_dataset):
+        hyper_params = super().get_default_hyperparameters(test_dataset)
+        hyper_params["F1"] = 8
+        hyper_params["D"] = 2
+        hyper_params["sampling_rate"] = 512
+
         return hyper_params
