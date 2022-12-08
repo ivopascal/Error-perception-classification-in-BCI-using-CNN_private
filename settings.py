@@ -33,7 +33,7 @@ SAMPLING_FREQUENCY = 512
 
 # Preprocessing settings
 FEEDBACK_WINDOW_OFFSET = 0
-FEEDBACK_WINDOW_SIZE = 600  # time in ms
+FEEDBACK_WINDOW_SIZE = 450  # time in ms
 
 USE_BANDPASS = True
 BANDPASS_ORDER = 6
@@ -42,11 +42,11 @@ BANDPASS_HIGH_FREQ = 10
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
-OVERRIDE_SAVES = True
+OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "CrossEntropy5ensembleProper_EEGNet"
+EXPERIMENT_NAME = "LDA"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -54,7 +54,7 @@ OVERRIDEN_HYPER_PARAMS = {
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
-MODEL_CLASS = ProperEEGNet
+MODEL_CLASS = CorreiaNet
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
