@@ -103,7 +103,7 @@ class ProperEEGNet(EEGNet):
 
             # FC Layer
             nn.Flatten(),
-            nn.Linear(192, 1),
+            nn.Linear(800, 1),
             nn.Sigmoid(),
         )
 

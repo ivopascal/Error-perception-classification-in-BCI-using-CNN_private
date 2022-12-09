@@ -7,9 +7,10 @@ import pickle as pk
 
 from tqdm import tqdm
 
-from settings import VALIDATION_PERCENTAGE, SEED
+from settings import VALIDATION_PERCENTAGE, SEED, FEEDBACK_WINDOW_OFFSET
 from src.data.util import open_file_pickle
 from src.util.dataclasses import EpochedDataSet, TimeSeriesRun
+from src.util.util import milliseconds_to_samples
 
 
 def get_available_pickle_folders(path: str, folder_type="") -> Tuple[List[str], List[str]]:
@@ -50,8 +51,12 @@ def build_continuous_dataset(folderpath: str):
 
         # Get list of feedback events at pairs [Feedback_type, Time_sample]
         feedback_events = np.array([list(label) for label in zip(run.labels[:, 1], run.feedback_indices)])
+
         y = np.full(run.session.shape[1], -1)
-        y[feedback_events[:, 1]] = feedback_events[:, 0]
+
+        feedback_event_indices = feedback_events[:, 1]
+        feedback_event_indices += milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET)
+        y[feedback_event_indices] = feedback_events[:, 0]
         x_block = np.array(run.session, dtype="float32")
         y_block = [run.file_sub_sess_run[0], sess_idx, 1, run.file_sub_sess_run[2], y]
         if sess_idx == 1:

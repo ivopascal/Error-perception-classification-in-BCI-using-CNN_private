@@ -32,8 +32,8 @@ RUNS_IDX = range(1, 11)
 SAMPLING_FREQUENCY = 512
 
 # Preprocessing settings
-FEEDBACK_WINDOW_OFFSET = 0
-FEEDBACK_WINDOW_SIZE = 450  # time in ms
+FEEDBACK_WINDOW_OFFSET = -600
+FEEDBACK_WINDOW_SIZE = 1200  # time in ms
 
 USE_BANDPASS = True
 BANDPASS_ORDER = 6
@@ -46,7 +46,7 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "LDA"
+EXPERIMENT_NAME = "600x600LDA"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -54,7 +54,9 @@ OVERRIDEN_HYPER_PARAMS = {
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
-MODEL_CLASS = CorreiaNet
+MODEL_CLASS = ProperEEGNet
+
+MODEL_TYPE = "SKLearn"  # Either "Pytorch" or "SKLearn"
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
