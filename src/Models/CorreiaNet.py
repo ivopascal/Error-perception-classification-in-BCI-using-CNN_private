@@ -22,12 +22,12 @@ class CorreiaNet(ModelCore):
         text = ""
 
         # Model name
-        model_name = "_own11"
+        model_name = "_CorreiaNet"
         text += "<h1>{}</h1>".format(model_name)
 
         # Model key points
         key_points = """
-      <p>This model is an experiment.</p>
+      <p>This is the proposed CorreiaNet model. It's quite shallow, but also very highly parameterized.</p>
       """
         # Further explain the architecture
         text += "{}".format(key_points)

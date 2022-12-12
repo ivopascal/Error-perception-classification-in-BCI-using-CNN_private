@@ -13,7 +13,7 @@ from src.data.Datamodule import DataModule
 from src.data.build_dataset import build_dataset
 from src.evaluation.evaluate import evaluate_model
 from settings import PROJECT_MODEL_SAVES_FOLDER, OVERRIDEN_HYPER_PARAMS, MODEL_CLASS, \
-    EXPERIMENT_NAME, ENSEMBLE_SIZE
+    EXPERIMENT_NAME, ENSEMBLE_SIZE, EARLY_STOPPING_PATIENCE
 from src.util.dataclasses import EpochedDataSet
 
 
@@ -33,7 +33,7 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
 
         trainer = pl.Trainer(
             max_epochs=model.hyper_params['max_num_epochs'],
-            callbacks=[EarlyStopping(monitor="loss_val", min_delta=0.00, patience=20, verbose=False, mode="min")],
+            callbacks=[EarlyStopping(monitor="loss_val", min_delta=0.00, patience=EARLY_STOPPING_PATIENCE, verbose=False, mode="min")],
             logger=comet_logger,
             accelerator="mps",
             devices=1,

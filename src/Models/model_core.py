@@ -30,7 +30,7 @@ class ModelCore(pl.LightningModule):
         self.model = self.create_model_architecture()
         self.loss_function = self.get_loss_function()
 
-        self.accuracy = Accuracy()
+        self.accuracy = Accuracy(task="binary")
 
     def get_hyperparams(self):
         return self.hyper_params

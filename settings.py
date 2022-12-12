@@ -1,10 +1,12 @@
 import random
 
 from src.Models.ConvNet import ConvNet64C
-from src.Models.EegNet import EEGNet, BayesianEEGNet, ProperEEGNet
+from src.Models.EegNet import EEGNet, BayesianEEGNet, ProperEEGNet, TorchEEGNet, LargeTorchEEGNet
 from src.Models.CorreiaNet import CorreiaNet, BayesianCorreiaNet
 
 # Project folders settings
+from src.Models.FBCNet import FBCNet
+
 PROJECT_ROOT_FOLDER = "/Users/ivopascal/Documents/PhD/Error-perception-classification-in-BCI-using-CNN/BCI_root/"
 PROJECT_DATASET_FOLDER = PROJECT_ROOT_FOLDER + "Datasets/Monitoring_error-related_potentials_2015/"
 PROJECT_DATASET_PICKLE_FOLDER = PROJECT_DATASET_FOLDER + "Datasets_pickle_files/"
@@ -32,8 +34,8 @@ RUNS_IDX = range(1, 11)
 SAMPLING_FREQUENCY = 512
 
 # Preprocessing settings
-FEEDBACK_WINDOW_OFFSET = -600
-FEEDBACK_WINDOW_SIZE = 1200  # time in ms
+FEEDBACK_WINDOW_OFFSET = 0
+FEEDBACK_WINDOW_SIZE = 600  # time in ms
 
 USE_BANDPASS = True
 BANDPASS_ORDER = 6
@@ -46,7 +48,7 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "600x600LDA"
+EXPERIMENT_NAME = "TorchEEGNet"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -56,11 +58,11 @@ if DEBUG_MODE:
     EXPERIMENT_NAME = EXPERIMENT_NAME + "_mock"
 MODEL_CLASS = ProperEEGNet
 
-MODEL_TYPE = "SKLearn"  # Either "Pytorch" or "SKLearn"
+MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
-
+EARLY_STOPPING_PATIENCE = 10
 # Evaluate settings
 CKPT_PATH = 'last'
 
@@ -69,4 +71,4 @@ random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
 
-ENSEMBLE_SIZE = 5
+ENSEMBLE_SIZE = 1

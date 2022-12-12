@@ -1,4 +1,5 @@
 import torch.nn as nn
+from torch.nn import BCELoss
 
 from src.Models.model_core import ModelCore
 
@@ -74,7 +75,8 @@ class ConvNet64C(ConvNet2C):
                 nn.ELU(),
                 nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
                 nn.Flatten(),
-                nn.Linear(25344, self.get_n_output_nodes()),  # 25344 for 600ms, 2304 for 64 samples
+                nn.Linear(25344, self.get_n_output_nodes()),  # 25344 for 600ms, 2304 for 64 samples # 25344 for 600ms, 2304 for 64 samples
+                nn.Sigmoid(),
         )
 
     @staticmethod
@@ -83,5 +85,43 @@ class ConvNet64C(ConvNet2C):
 
     @staticmethod
     def get_keypoints_html_addendum():
-        return "<p>This specific implementation assumes the 2 channel situation of FCz and Cz</p>"
+        return "<p>This specific implementation assumes the 64 channel situation</p>"
+
+    def get_n_output_nodes(self):
+        return 1
+
+    def get_loss_function(self):
+        return BCELoss()
+
+
+class CustomConvNet64C(ConvNet2C):
+    def create_model_architecture(self):
+        return nn.Sequential(
+                nn.Conv2d(1, 128, kernel_size=(64, 64)),
+                nn.ELU(),
+                nn.MaxPool2d(kernel_size=(1, 5), stride=(1, 2)),
+                nn.BatchNorm2d(128),
+                nn.Conv2d(128, 64, kernel_size=(1, 10)),
+                nn.ELU(),
+                nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2)),
+                nn.BatchNorm2d(64),
+
+                nn.Flatten(),
+                nn.Linear(3520, self.get_n_output_nodes()),  # 25344 for 600ms, 2304 for 64 samples
+                nn.Sigmoid(),
+        )
+
+    @staticmethod
+    def get_model_name():
+        return "Custom ConvNet 64 Channel"
+
+    @staticmethod
+    def get_keypoints_html_addendum():
+        return "<p>I made some alterations to make sure the model design is sensible / possible</p>"
+
+    def get_n_output_nodes(self):
+        return 1
+
+    def get_loss_function(self):
+        return BCELoss()
 

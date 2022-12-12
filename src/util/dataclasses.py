@@ -44,6 +44,8 @@ class EvaluationMetrics:
     y_predicted_matrix: np.array
     statscores: StatScores
     precision: Tensor
+    specificity: Tensor
+    accuracy: Tensor
     recall: Tensor
     negative_predictive_value: float
     accuracy_conf_matrix: float

@@ -1,4 +1,5 @@
 import torch.nn as nn
+from torch import Tensor
 
 
 class View(nn.Module):
@@ -15,6 +16,21 @@ class View(nn.Module):
         batch_size = x.size(0)
         shape = (batch_size, *self.shape)
         out = x.view(shape)
+        print(out.shape)
+        return out
+
+
+class Squeeze(nn.Module):
+    # torch.Tensor.Squeeze() implemented as a NN layer
+    def __init__(self):
+        super().__init__()
+
+    def __repr__(self):
+        return f'Squeeze'
+
+    def forward(self, x: Tensor):
+        print(x.shape)
+        out = x.squeeze()
         print(out.shape)
         return out
 

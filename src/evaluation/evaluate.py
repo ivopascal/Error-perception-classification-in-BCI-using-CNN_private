@@ -5,7 +5,7 @@ from typing import List
 import torch
 from matplotlib import pyplot as plt
 import pytorch_lightning as pl
-from torchmetrics.functional import precision, f1_score, recall, stat_scores
+from torchmetrics.functional import precision, f1_score, recall, stat_scores, specificity, accuracy
 
 from settings import CKPT_PATH, PROJECT_IMAGES_FOLDER, EXPERIMENT_NAME, PROJECT_RESULTS_FOLDER
 from src.Models.model_core import ModelCore
@@ -55,7 +55,7 @@ def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution,
         y_true_matrix.append(y_true_add)
         y_predicted_matrix.append(y_pred_add)
 
-    tp, fp, tn, fn, support = stat_scores(binarized_y_predicted, y_true)
+    tp, fp, tn, fn, support = stat_scores(binarized_y_predicted, y_true, task="binary")
     try:
         mcc = ((tp * tn) - (fp * fn)) / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
         n_mcc = (mcc + 1) / 2
@@ -74,11 +74,13 @@ def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution,
         y_true_matrix,
         y_predicted_matrix,
         StatScores(tp, fp, tn, fn, support),
-        precision(binarized_y_predicted, y_true),
-        recall(binarized_y_predicted, y_true),
+        precision(binarized_y_predicted, y_true, task="binary"),
+        specificity(binarized_y_predicted, y_true, task="binary"),
+        accuracy(binarized_y_predicted, y_true, task="binary"),
+        recall(binarized_y_predicted, y_true, task="binary"),
         negative_predictive_value,
         accuracy_conf_matrix,
-        f1_score(binarized_y_predicted, y_true),
+        f1_score(binarized_y_predicted, y_true, task="binary"),
         mcc,
         n_mcc,
     )
@@ -110,19 +112,28 @@ def plot_and_log_roc(evaluation_metrics, hyper_params, comet_logger):
         comet_logger.experiment.log_image(image_file_name)
 
 
-def log_evaluation_metrics_to_comet(evaluation_metrics: EvaluationMetrics, comet_logger, prefix=""):
+def log_evaluation_metrics_to_comet(evaluation_metrics: EvaluationMetrics,
+                                    comet_logger: pl.loggers.CometLogger,
+                                    prefix=""):
     log_metric = comet_logger.experiment.log_metric
     log_metric(f"{prefix}true_positives", evaluation_metrics.statscores.tp)
     log_metric(f"{prefix}true_negatives", evaluation_metrics.statscores.tn)
     log_metric(f"{prefix}false_positives", evaluation_metrics.statscores.fp)
     log_metric(f"{prefix}false_negatives", evaluation_metrics.statscores.fn)
     log_metric(f"{prefix}precision", evaluation_metrics.precision)
+    log_metric(f"{prefix}specificity", evaluation_metrics.specificity)
+    log_metric(f"{prefix}accuracy", evaluation_metrics.accuracy)
+
     log_metric(f"{prefix}recall", evaluation_metrics.recall)
     log_metric(f"{prefix}negative_predictive_value", evaluation_metrics.negative_predictive_value)
     log_metric(f"{prefix}accuracy_conf_matrix", evaluation_metrics.accuracy_conf_matrix)
     log_metric(f"{prefix}F1_score", evaluation_metrics.f1_score)
     log_metric(f"{prefix}MCC", evaluation_metrics.mcc)
     log_metric(f"{prefix}nMCC", evaluation_metrics.n_mcc)
+
+    comet_logger.experiment.log_confusion_matrix(y_true=evaluation_metrics.y_true_matrix,
+                                                 y_predicted=evaluation_metrics.y_predicted_matrix,
+                                                 title={prefix})
 
 
 def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_logger: pl.loggers.CometLogger):
