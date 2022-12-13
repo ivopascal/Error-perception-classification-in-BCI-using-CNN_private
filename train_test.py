@@ -11,7 +11,7 @@ import torch
 
 from src.data.Datamodule import DataModule
 from src.data.build_dataset import build_dataset
-from src.evaluation.evaluate import evaluate_model
+from src.evaluation.evaluate import evaluate_model, calculate_metrics_ensemble, log_evaluation_metrics_to_comet
 from settings import PROJECT_MODEL_SAVES_FOLDER, OVERRIDEN_HYPER_PARAMS, MODEL_CLASS, \
     EXPERIMENT_NAME, ENSEMBLE_SIZE, EARLY_STOPPING_PATIENCE
 from src.util.dataclasses import EpochedDataSet
@@ -69,6 +69,10 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
     if len(models) == 1:
         test_continuous(model=models[0], comet_logger=comet_logger, dataset_folder=continous_dataset_path)
     else:
+
+        metrics = calculate_metrics_ensemble(trainer, models, dm, ckpt_path=None)
+        log_evaluation_metrics_to_comet(metrics, comet_logger, prefix="Ensemble_")
+
         test_ensemble_continuous(models=models, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
 
     comet_logger.experiment.end()
