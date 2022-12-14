@@ -17,3 +17,5 @@ def binary_acc(y_hat, y):
     acc = torch.round(acc * 100)
 
     return acc
+
+

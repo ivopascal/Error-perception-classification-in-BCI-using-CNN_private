@@ -50,6 +50,10 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
         # Log training time (to Metric tab and HTML tab)
         training_time = round(time.time() - start_time, 1)
         comet_logger.experiment.log_metric("training_time_sec", training_time)
+
+        n_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        comet_logger.experiment.log_metric("parameters", n_trainable_params)
+
         train_time_txt = "<h2>Training duration</h2>"
         train_time_txt += "<p>{} seconds (~{} minutes)</p><br>".format(training_time, round(training_time / 60))
         comet_logger.experiment.log_html(train_time_txt)

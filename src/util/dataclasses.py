@@ -53,3 +53,10 @@ class EvaluationMetrics:
     mcc: float
     n_mcc: float
 
+
+@dataclass
+class PerParticipant:
+    predictions: Tensor
+    variances: Tensor
+    trues: Tensor
+    y_in_distribution: Tensor
