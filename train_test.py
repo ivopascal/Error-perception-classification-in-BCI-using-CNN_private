@@ -11,7 +11,7 @@ import torch
 
 from src.data.Datamodule import DataModule
 from src.data.build_dataset import build_dataset
-from src.evaluation.evaluate import evaluate_model
+from src.evaluation.evaluate import evaluate_model, calculate_metrics_ensemble, log_evaluation_metrics_to_comet
 from settings import PROJECT_MODEL_SAVES_FOLDER, OVERRIDEN_HYPER_PARAMS, MODEL_CLASS, \
     EXPERIMENT_NAME, ENSEMBLE_SIZE, EARLY_STOPPING_PATIENCE
 from src.util.dataclasses import EpochedDataSet
@@ -50,6 +50,10 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
         # Log training time (to Metric tab and HTML tab)
         training_time = round(time.time() - start_time, 1)
         comet_logger.experiment.log_metric("training_time_sec", training_time)
+
+        n_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        comet_logger.experiment.log_metric("parameters", n_trainable_params)
+
         train_time_txt = "<h2>Training duration</h2>"
         train_time_txt += "<p>{} seconds (~{} minutes)</p><br>".format(training_time, round(training_time / 60))
         comet_logger.experiment.log_html(train_time_txt)
@@ -69,6 +73,10 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
     if len(models) == 1:
         test_continuous(model=models[0], comet_logger=comet_logger, dataset_folder=continous_dataset_path)
     else:
+
+        metrics = calculate_metrics_ensemble(trainer, models, dm, ckpt_path=None)
+        log_evaluation_metrics_to_comet(metrics, comet_logger, prefix="Ensemble_")
+
         test_ensemble_continuous(models=models, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
 
     comet_logger.experiment.end()

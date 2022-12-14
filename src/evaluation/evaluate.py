@@ -11,6 +11,10 @@ from settings import CKPT_PATH, PROJECT_IMAGES_FOLDER, EXPERIMENT_NAME, PROJECT_
 from src.Models.model_core import ModelCore
 from src.data.Datamodule import DataModule
 from src.data.util import save_file_pickle
+from src.evaluation.per_participant import split_metrics_per_participant
+from src.plots.average_around_event import plot_average_around_event
+from src.plots.prediction_variance import plot_prediction_variance
+from src.plots.roc_auc import plot_roc_auc
 from src.util.dataclasses import EvaluationMetrics, StatScores
 from sklearn.metrics import roc_curve, auc
 
@@ -86,32 +90,6 @@ def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution,
     )
 
 
-def plot_and_log_roc(evaluation_metrics, hyper_params, comet_logger):
-    fpr, tpr, threshold = roc_curve(evaluation_metrics.y_true.numpy(),
-                                    evaluation_metrics.y_predicted.numpy())
-    roc_auc = auc(fpr, tpr)
-
-    if hyper_params.get("bayesian_forward_passes"):
-        plt.plot(fpr, tpr, label=f"AUC bayesian {hyper_params['bayesian_forward_passes']} = {roc_auc}")
-    else:
-        plt.plot(fpr, tpr, label=f"AUC = {roc_auc}")
-    plt.plot([0, 1], [0, 1], linestyle="--")
-    plt.title("ROC curve on continuous domain. OoD labeled 0 class")
-    plt.legend()
-
-    if hyper_params.get("bayesian_forward_passes"):
-        image_file_name = PROJECT_IMAGES_FOLDER + EXPERIMENT_NAME + \
-                          f"-roc-curve-bayesian{hyper_params['bayesian_forward_passes']}.png"
-    else:
-        image_file_name = PROJECT_IMAGES_FOLDER + EXPERIMENT_NAME + "-roc-curve.png"
-
-    plt.savefig(image_file_name)
-
-    if comet_logger:
-        comet_logger.experiment.log_metric("ROC_AUC", roc_auc)
-        comet_logger.experiment.log_image(image_file_name)
-
-
 def log_evaluation_metrics_to_comet(evaluation_metrics: EvaluationMetrics,
                                     comet_logger: pl.loggers.CometLogger,
                                     prefix=""):
@@ -141,3 +119,31 @@ def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_
     save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
                      f"metrics_{EXPERIMENT_NAME}_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")
     log_evaluation_metrics_to_comet(metrics, comet_logger)
+
+
+def log_continuous_metrics(metrics, comet_logger):
+    comet_logger.experiment.log_metric("Variance when correct ID",
+                                       metrics.y_variance[metrics.y_predicted == metrics.y_true
+                                                          & metrics.y_in_distribution].mean())
+    comet_logger.experiment.log_metric("Variance when incorrect ID",
+                                       metrics.y_variance[metrics.y_predicted != metrics.y_true
+                                                          & metrics.y_in_distribution].mean())
+
+    comet_logger.experiment.log_metric("Variance when ID",
+                                       metrics.y_variance[metrics.y_in_distribution].mean())
+
+    comet_logger.experiment.log_metric("Variance when OOD",
+                                       metrics.y_variance[~metrics.y_in_distribution].mean())
+
+    fig, ax = plot_average_around_event(metrics, -600, 1000, y_to_plot=0, label_prefix="non-error_")
+    fig, ax = plot_average_around_event(metrics, -600, 1000, y_to_plot=1, label_prefix="error_", figax=(fig, ax))
+    comet_logger.experiment.log_figure(figure_name="Average around event", figure=fig)
+
+    fig, axs = plot_prediction_variance(metrics)
+    comet_logger.experiment.log_figure(figure_name="Prediction vs variance", figure=fig)
+
+    per_participants = split_metrics_per_participant(metrics)
+    fig, ax = plot_roc_auc(per_participants)
+    comet_logger.experiment.log_figure(figure_name="Per participant ROC", figure=fig)
+
+
