@@ -72,7 +72,7 @@ def test_ensemble_continuous(models=None, comet_logger=None, dataset_folder=None
     if not models:
         raise ValueError("Models needs to be provided")
 
-    if False: # DEBUG_MODE:
+    if DEBUG_MODE:
         test_set = test_set[0][:1], test_set[1][:1]
 
     dm = ContinuousDataModule(train_set, val_set, test_set,
