@@ -17,7 +17,7 @@ class EpochedDataSet:
 @dataclass
 class TimeSeriesRun:
     session: Any = None
-    file_sub_sess_run: Any = None  # This should be a dataclass of participant_idx, session_idx, trial_idx, y_label
+    file_sub_sess_run: Any = None  # This should be a dataclass of participant_idx, session_idx, trial_idx
     labels: Any = None
     feedback_indices: Any = None
     filtered_metadata: Any = None

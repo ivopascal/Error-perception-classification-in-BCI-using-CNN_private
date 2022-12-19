@@ -3,17 +3,20 @@ import os
 from functools import cache
 from typing import List, Tuple
 
+import mne
 import pandas as pd
 import numpy as np
 import re
 
+from mne.preprocessing import ICA
 from tqdm import tqdm
-from scipy.signal import butter, sosfiltfilt
+from scipy.signal import butter, sosfiltfilt, sosfilt
 
 from src.data.util import save_file_pickle, open_file_pickle
-from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX,\
+from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX, \
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
-    NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER
+    NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER, USE_CAUSAL_BUTTERWORTH, \
+    SEED, N_ICA_COMPONENTS, MONTAGE, EOG_CHANNEL, ECG_CHANNEL, EOG_THRESHOLD, ECG_THRESHOLD, MUSCLE_THRESHOLD
 from src.data.util import file_names_timeseries_to_iterator
 from src.util.dataclasses import TimeSeriesRun
 
@@ -108,7 +111,7 @@ def construct_metadata():
     return metadata
 
 
-def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = None, override_save=True)\
+def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = None, override_save=True) \
         -> Tuple[List[TimeSeriesRun], str]:
     physiological_indices = np.sort([channel_name_to_index(channel) for channel in CHANNEL_NAMES
                                      if channel not in NON_PHYSIOLOGICAL_CHANNELS])
@@ -116,6 +119,7 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
     run_iterator = file_names_timeseries_to_iterator(file_names, runs)
 
     preprocessed_runs = []
+    icas_per_subject = []
     for idx, run in enumerate(tqdm(run_iterator, unit='run')):
         # Load raw data from Raw folder
         if file_names:
@@ -136,12 +140,6 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
         # ------------------------ Remove non phisiological signals ------------------------
         run.session = run.session[physiological_indices, :]
 
-        # ------------------------ Bandpass filter ------------------------
-        if USE_BANDPASS:
-            run.session = butter_bandpass_filter(run.session, BANDPASS_LOW_FREQ, BANDPASS_HIGH_FREQ, SAMPLING_FREQUENCY,
-                                                 order=BANDPASS_ORDER,
-                                                 axis=1)
-
         if EXCLUDE_CHANNELS and INCLUDE_CHANNELS:
             raise ValueError("Specify either only include channels or only exclude channels")
         if EXCLUDE_CHANNELS:  # If dictionary is not empty: Exclusion criterion
@@ -153,6 +151,50 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
                 [channel_name_to_physiological_index(channel) for channel in CHANNEL_NAMES if
                  channel in INCLUDE_CHANNELS])
             run.session = run.session[channels_indexes, :]
+
+        mne_session = mne.io.RawArray(run.session,
+                                      mne.create_info(
+                                          ch_names=[ch for ch in CHANNEL_NAMES if ch not in NON_PHYSIOLOGICAL_CHANNELS],
+                                          sfreq=SAMPLING_FREQUENCY, ch_types="eeg"))
+
+        heog = mne.channels.combine_channels(mne_session, groups=dict(HEOG=[6, 41]),
+                                             method=lambda data: np.diff(data, axis=0).squeeze())
+
+        mne_session.filter(1, 50)
+        # if run.file_sub_sess_run[1] == 1:
+        if True:
+            ica = ICA(n_components=N_ICA_COMPONENTS, max_iter='auto', random_state=SEED)
+            ica.fit(mne_session, 'eeg')
+            mne_session = mne_session.add_channels([heog], force_update_info=True)
+
+            bad_eog, eog_scores = ica.find_bads_eog(mne_session, ch_name=EOG_CHANNEL, measure='correlation',
+                                                    threshold=EOG_THRESHOLD)
+            bad_heog, heog_scores = ica.find_bads_eog(mne_session, ch_name="HEOG", measure='correlation',
+                                                    threshold=EOG_THRESHOLD)
+            bad_ecg, ecg_scores = ica.find_bads_ecg(mne_session, ch_name=ECG_CHANNEL, method='correlation',
+                                                    measure='correlation',
+                                                    threshold=ECG_THRESHOLD)
+
+            mne_session = mne_session.drop_channels("HEOG")
+
+            montage = mne.channels.make_standard_montage(MONTAGE)
+            mne_session.set_montage(montage)
+
+            bad_muscle, muscle_scores = ica.find_bads_muscle(mne_session, threshold=MUSCLE_THRESHOLD)
+            excludes = bad_eog + bad_heog + bad_ecg + bad_muscle
+            print(f"Excluded {len(excludes)} ICs")
+            icas_per_subject.append((ica, excludes))
+        else:
+            ica, excludes = icas_per_subject[run.file_sub_sess_run[0]]
+
+        out = ica.apply(mne_session, exclude=excludes)
+        run.session = out.get_data()
+
+        # ------------------------ Bandpass filter ------------------------
+        if USE_BANDPASS:
+            run.session = butter_bandpass_filter(run.session, BANDPASS_LOW_FREQ, BANDPASS_HIGH_FREQ, SAMPLING_FREQUENCY,
+                                                 order=BANDPASS_ORDER,
+                                                 axis=1)
 
         # ------------------------ Save pre-processed data ------------------------
 
@@ -171,7 +213,10 @@ def butter_bandpass_filter(data, lowcut, highcut, fs, order, axis=-1):
     high = highcut / nyq
     sos = butter(order, [low, high], btype='band', output='sos')
     # Perform a forward-backward filter: removes phase shift and doubles order of filter
-    return sosfiltfilt(sos, data, axis=axis)
+    if USE_CAUSAL_BUTTERWORTH:
+        return sosfilt(sos, data, axis=axis)
+    else:
+        return sosfiltfilt(sos, data, axis=axis)
 
 
 def metadata2path_code(filt_metadata=None, epoch_metadata=None, bal_metadata=None):

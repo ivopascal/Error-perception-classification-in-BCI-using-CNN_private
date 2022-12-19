@@ -1,5 +1,7 @@
 import random
 
+import mne
+
 from src.Models.ConvNet import ConvNet64C
 from src.Models.EegNet import EEGNet, BayesianEEGNet, ProperEEGNet, TorchEEGNet, LargeTorchEEGNet
 from src.Models.CorreiaNet import CorreiaNet, BayesianCorreiaNet
@@ -41,6 +43,16 @@ USE_BANDPASS = True
 BANDPASS_ORDER = 6
 BANDPASS_LOW_FREQ = 1
 BANDPASS_HIGH_FREQ = 10
+USE_CAUSAL_BUTTERWORTH = False
+
+N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
+EOG_CHANNEL = "Fpz"
+ECG_CHANNEL = "Fpz"
+EOG_THRESHOLD = 0.7
+ECG_THRESHOLD = 0.4  # We're setting these much lower bc we're using proxies
+MUSCLE_THRESHOLD = 0.5
+MONTAGE = 'standard_1020'  # 3D layout of channels
+mne.set_log_level("ERROR")
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
@@ -48,13 +60,13 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "TestGraphs"
-DEBUG_MODE = True
+EXPERIMENT_NAME = "Test_Interpolate_HEOG_CNN"
+DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
 
 
-MODEL_CLASS = CorreiaNet
+MODEL_CLASS = ProperEEGNet
 
 MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
@@ -69,7 +81,7 @@ random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
 
-ENSEMBLE_SIZE = 5
+ENSEMBLE_SIZE = 2
 
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5
