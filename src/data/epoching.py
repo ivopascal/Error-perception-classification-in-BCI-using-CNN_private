@@ -6,7 +6,8 @@ from src.data.data_wrangling import metadata2path_code
 import numpy as np
 from tqdm import tqdm
 
-from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE, SAMPLING_FREQUENCY
+from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE, SAMPLING_FREQUENCY, \
+    SLIDING_AUGMENTATION_RANGE
 from src.data.util import file_names_timeseries_to_iterator, save_file_pickle
 from src.util.dataclasses import TimeSeriesRun, EpochedDataSet
 from src.util.util import milliseconds_to_samples
@@ -50,11 +51,18 @@ def epoch_data(file_names: Optional[List[str]] = None, runs: Optional[List[TimeS
 
         # Append individual trial data
         for trial_idx, (label, trial_index) in enumerate(feedback_events):
-            idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET)
-            idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
-            epoched_data.append(run.session[:, idx_start:idx_end])
-            # This could use a dataclass
-            epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
+            if sess_idx == 1 and SLIDING_AUGMENTATION_RANGE:
+                for augment_offset in range(milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[0]),
+                                            milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[1]), 10):
+                    idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET) + augment_offset
+                    idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
+                    epoched_data.append(run.session[:, idx_start:idx_end])
+                    epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
+            else:
+                idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET)
+                idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
+                epoched_data.append(run.session[:, idx_start:idx_end])
+                epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
 
     # After all trials have been added, convert it to Numpy
     epoched_data = np.array(epoched_data)
