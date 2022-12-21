@@ -1,8 +1,11 @@
+import numpy as np
 import pytorch_lightning as pl
+import torch
 from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data.dataset import T_co
 import random
-from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TEST_BATCH_SIZE, FEEDBACK_WINDOW_OFFSET
+from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TEST_BATCH_SIZE, FEEDBACK_WINDOW_OFFSET, \
+    SLIDING_AUGMENTATION_RANGE
 from src.util.util import milliseconds_to_samples
 
 
@@ -23,6 +26,26 @@ class DataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(self.test_set, batch_size=self.test_batch_size, shuffle=False, drop_last=True)
+
+    def on_after_batch_transfer(self, batch, dataloader_idx):
+        x, y = batch
+        if self.trainer.training:
+            samples = []
+            for sample in x:
+                t_start = milliseconds_to_samples(-SLIDING_AUGMENTATION_RANGE[0] + FEEDBACK_WINDOW_OFFSET + np.random.normal(0, -SLIDING_AUGMENTATION_RANGE[0] ))
+
+                t_start = max(0, t_start)
+                t_start = min(t_start, sample.shape[1] - milliseconds_to_samples(FEEDBACK_WINDOW_SIZE))
+
+                print(t_start)
+
+                t_end = t_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
+                sample = sample[:, t_start: t_end]
+                samples.append(sample)
+            x = torch.stack(samples)
+        else:
+            x = x[:, :, milliseconds_to_samples(-SLIDING_AUGMENTATION_RANGE[0] + FEEDBACK_WINDOW_OFFSET):]
+        return x, y
 
 
 class ContinuousDataSet(IterableDataset):

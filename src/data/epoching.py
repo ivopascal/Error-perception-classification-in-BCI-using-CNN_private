@@ -51,18 +51,10 @@ def epoch_data(file_names: Optional[List[str]] = None, runs: Optional[List[TimeS
 
         # Append individual trial data
         for trial_idx, (label, trial_index) in enumerate(feedback_events):
-            if sess_idx == 1 and SLIDING_AUGMENTATION_RANGE:
-                for augment_offset in range(milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[0]),
-                                            milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[1]), 10):
-                    idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET) + augment_offset
-                    idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
-                    epoched_data.append(run.session[:, idx_start:idx_end])
-                    epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
-            else:
-                idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET)
-                idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
-                epoched_data.append(run.session[:, idx_start:idx_end])
-                epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
+            idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET) + milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[0])
+            idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE) + milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[1])
+            epoched_data.append(run.session[:, idx_start:idx_end])
+            epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
 
     # After all trials have been added, convert it to Numpy
     epoched_data = np.array(epoched_data)
