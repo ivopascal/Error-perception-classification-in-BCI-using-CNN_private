@@ -32,16 +32,8 @@ class DataModule(pl.LightningDataModule):
         if self.trainer.training:
             samples = []
             for sample in x:
-                t_start = milliseconds_to_samples(-SLIDING_AUGMENTATION_RANGE[0] + FEEDBACK_WINDOW_OFFSET + np.random.normal(0, -SLIDING_AUGMENTATION_RANGE[0] ))
-
-                t_start = max(0, t_start)
-                t_start = min(t_start, sample.shape[1] - milliseconds_to_samples(FEEDBACK_WINDOW_SIZE))
-
-                print(t_start)
-
-                t_end = t_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)
-                sample = sample[:, t_start: t_end]
-                samples.append(sample)
+                for t_start in range(0, -SLIDING_AUGMENTATION_RANGE[0] + SLIDING_AUGMENTATION_RANGE[1]):
+                    samples.append(sample[:, t_start: t_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)])
             x = torch.stack(samples)
         else:
             x = x[:, :, milliseconds_to_samples(-SLIDING_AUGMENTATION_RANGE[0] + FEEDBACK_WINDOW_OFFSET):]
