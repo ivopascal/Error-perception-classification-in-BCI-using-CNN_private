@@ -93,6 +93,8 @@ class ModelCore(pl.LightningModule):
             'log': logs
         }
 
+
+
     def training_step(self, train_batch, batch_idx):
         return self.calculate_loss_and_accuracy(train_batch, "train")
 

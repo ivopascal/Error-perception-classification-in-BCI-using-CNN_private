@@ -1,23 +1,21 @@
 import math
 import os
+import re
 from functools import cache
 from typing import List, Tuple
 
-import mne
-import pandas as pd
 import numpy as np
-import re
-
-from mne.preprocessing import ICA
-from tqdm import tqdm
+import pandas as pd
 from scipy.signal import butter, sosfiltfilt, sosfilt
+from tqdm import tqdm
 
-from src.data.util import save_file_pickle, open_file_pickle
 from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX, \
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
     NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER, USE_CAUSAL_BUTTERWORTH, \
-    SEED, N_ICA_COMPONENTS, MONTAGE, EOG_CHANNEL, ECG_CHANNEL, EOG_THRESHOLD, ECG_THRESHOLD, MUSCLE_THRESHOLD
+    FILTER_ICA
+from src.data.ica import filter_ica
 from src.data.util import file_names_timeseries_to_iterator
+from src.data.util import save_file_pickle, open_file_pickle
 from src.util.dataclasses import TimeSeriesRun
 
 
@@ -119,7 +117,6 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
     run_iterator = file_names_timeseries_to_iterator(file_names, runs)
 
     preprocessed_runs = []
-    icas_per_subject = []
     for idx, run in enumerate(tqdm(run_iterator, unit='run')):
         # Load raw data from Raw folder
         if file_names:
@@ -152,43 +149,8 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
                  channel in INCLUDE_CHANNELS])
             run.session = run.session[channels_indexes, :]
 
-        mne_session = mne.io.RawArray(run.session,
-                                      mne.create_info(
-                                          ch_names=[ch for ch in CHANNEL_NAMES if ch not in NON_PHYSIOLOGICAL_CHANNELS],
-                                          sfreq=SAMPLING_FREQUENCY, ch_types="eeg"))
-
-        heog = mne.channels.combine_channels(mne_session, groups=dict(HEOG=[6, 41]),
-                                             method=lambda data: np.diff(data, axis=0).squeeze())
-
-        mne_session.filter(1, 50)
-        # if run.file_sub_sess_run[1] == 1:
-        if True:
-            ica = ICA(n_components=N_ICA_COMPONENTS, max_iter='auto', random_state=SEED)
-            ica.fit(mne_session, 'eeg')
-            mne_session = mne_session.add_channels([heog], force_update_info=True)
-
-            bad_eog, eog_scores = ica.find_bads_eog(mne_session, ch_name=EOG_CHANNEL, measure='correlation',
-                                                    threshold=EOG_THRESHOLD)
-            bad_heog, heog_scores = ica.find_bads_eog(mne_session, ch_name="HEOG", measure='correlation',
-                                                    threshold=EOG_THRESHOLD)
-            bad_ecg, ecg_scores = ica.find_bads_ecg(mne_session, ch_name=ECG_CHANNEL, method='correlation',
-                                                    measure='correlation',
-                                                    threshold=ECG_THRESHOLD)
-
-            mne_session = mne_session.drop_channels("HEOG")
-
-            montage = mne.channels.make_standard_montage(MONTAGE)
-            mne_session.set_montage(montage)
-
-            bad_muscle, muscle_scores = ica.find_bads_muscle(mne_session, threshold=MUSCLE_THRESHOLD)
-            excludes = bad_eog + bad_heog + bad_ecg + bad_muscle
-            print(f"Excluded {len(excludes)} ICs")
-            icas_per_subject.append((ica, excludes))
-        else:
-            ica, excludes = icas_per_subject[run.file_sub_sess_run[0]]
-
-        out = ica.apply(mne_session, exclude=excludes)
-        run.session = out.get_data()
+        if FILTER_ICA:
+            run.session = filter_ica(run)
 
         # ------------------------ Bandpass filter ------------------------
         if USE_BANDPASS:
