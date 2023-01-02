@@ -45,9 +45,9 @@ N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
 EOG_CHANNEL = "Fpz"
 ECG_CHANNEL = "Fpz"
 EOG_THRESHOLD = 0.8
-HEOG_THRESHOLD = 0.9
-ECG_THRESHOLD = 0.9
-MUSCLE_THRESHOLD = 0.5
+HEOG_THRESHOLD = 0.6
+ECG_THRESHOLD = 0.6
+MUSCLE_THRESHOLD = 0.7
 MONTAGE = 'standard_1020'  # 3D layout of channels
 mne.set_log_level("ERROR")
 
@@ -58,7 +58,7 @@ BALANCE_DATASET = True
 
 # Training settings
 EXPERIMENT_NAME = "EEGNet_ICA_BENCH"
-DEBUG_MODE = False
+DEBUG_MODE = True
 OVERRIDEN_HYPER_PARAMS = {
 }
 
