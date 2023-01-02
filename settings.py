@@ -69,7 +69,7 @@ OVERRIDEN_HYPER_PARAMS = {
 }
 
 
-MODEL_CLASS = ProperEEGNet
+MODEL_CLASS_NAME = "EegNet.ProperEEGNet"
 
 MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
