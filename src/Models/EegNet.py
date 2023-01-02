@@ -180,3 +180,4 @@ class LargeTorchEEGNet(EEGNet):
 
     def get_n_output_nodes(self):
         return 1
+

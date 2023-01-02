@@ -38,6 +38,13 @@ SAMPLING_FREQUENCY = 512
 # Preprocessing settings
 FEEDBACK_WINDOW_OFFSET = 0
 FEEDBACK_WINDOW_SIZE = 600  # time in ms
+SLIDING_AUGMENTATION_RANGE = [-150, 150]  # offset and onset range in ms based on shape of ErrP
+SLIDING_AUGMENTATION_RANGE_NE = [-500, 500]
+
+
+FEEDBACK_WINDOW_SIZE = 1000  # time in ms
+SLIDING_AUGMENTATION_RANGE = [0, 0]  # offset and onset range in ms based on shape of ErrP
+SLIDING_AUGMENTATION_RANGE_NE = [0, 0]
 
 USE_BANDPASS = True
 BANDPASS_ORDER = 6
@@ -46,16 +53,18 @@ BANDPASS_HIGH_FREQ = 10
 USE_CAUSAL_BUTTERWORTH = True
 
 
-FILTER_ICA = True
-N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
+FILTER_ICA = False
+N_ICA_COMPONENTS = 5  # preprocessing 15 already takes about 10 minutes
 EOG_CHANNEL = "Fpz"
 ECG_CHANNEL = "Fpz"
-EOG_THRESHOLD = 0.8
+EOG_THRESHOLD = 0.9
 HEOG_THRESHOLD = 0.9
 ECG_THRESHOLD = 0.9
 MUSCLE_THRESHOLD = 0.5
 MONTAGE = 'standard_1020'  # 3D layout of channels
 mne.set_log_level("ERROR")
+
+USE_PSD = True
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
@@ -63,7 +72,7 @@ OVERRIDE_SAVES = True
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "EEGNet_ICA_BENCH"
+EXPERIMENT_NAME = "OOD-class-TEST-EEGNet"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -84,7 +93,7 @@ random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
 
-ENSEMBLE_SIZE = 5
+ENSEMBLE_SIZE = 1
 
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5

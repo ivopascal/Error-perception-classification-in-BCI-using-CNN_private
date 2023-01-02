@@ -4,6 +4,7 @@ import re
 from functools import cache
 from typing import List, Tuple
 
+import mne
 import numpy as np
 import pandas as pd
 from scipy.signal import butter, sosfiltfilt, sosfilt
@@ -12,7 +13,7 @@ from tqdm import tqdm
 from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX, \
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
     NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER, USE_CAUSAL_BUTTERWORTH, \
-    FILTER_ICA
+    FILTER_ICA, USE_PSD
 from src.data.ica import filter_ica
 from src.data.util import file_names_timeseries_to_iterator
 from src.data.util import save_file_pickle, open_file_pickle

@@ -54,6 +54,7 @@ class ModelCore(pl.LightningModule):
     def get_n_output_nodes(self):
         raise NotImplementedError
 
+
     def forward(self, x):
         x = x.float()
 
@@ -92,8 +93,6 @@ class ModelCore(pl.LightningModule):
             'loss': loss,
             'log': logs
         }
-
-
 
     def training_step(self, train_batch, batch_idx):
         return self.calculate_loss_and_accuracy(train_batch, "train")
