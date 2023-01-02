@@ -12,6 +12,7 @@ def filter_ica(run):
                                       ch_names=[ch for ch in CHANNEL_NAMES if ch not in NON_PHYSIOLOGICAL_CHANNELS],
                                       sfreq=SAMPLING_FREQUENCY, ch_types="eeg"))
 
+    # Artificial Horizontal EOG as the difference between F7 and F8
     heog = mne.channels.combine_channels(mne_session, groups=dict(HEOG=[6, 41]),
                                          method=lambda data: np.diff(data, axis=0).squeeze())
 
@@ -20,6 +21,7 @@ def filter_ica(run):
     ica.fit(mne_session, 'eeg')
     mne_session = mne_session.add_channels([heog], force_update_info=True)
 
+    # We use correlation for everything because Z-score seems to be buggy
     bad_heog, heog_scores = ica.find_bads_eog(mne_session, ch_name="HEOG", measure='correlation',
                                               threshold=HEOG_THRESHOLD)
 
@@ -34,11 +36,13 @@ def filter_ica(run):
 
     montage = mne.channels.make_standard_montage(MONTAGE)
     mne_session.set_montage(montage)
-
     bad_muscle, muscle_scores = ica.find_bads_muscle(mne_session, threshold=MUSCLE_THRESHOLD)
     excludes = bad_eog + bad_heog + bad_ecg + bad_muscle
-    print(f"Excluded {len(excludes)} ICs")
+    print(f"Excluded {len(excludes)} ICs:\n\t"
+          f"{bad_eog} for EOG,\n\t"
+          f"{bad_heog} for HEOG,\n\t"
+          f"{bad_ecg} for ECG and\n\t"
+          f"{bad_muscle} for muscle")
 
     out = ica.apply(mne_session, exclude=excludes)
     return out.get_data()
-

@@ -10,7 +10,6 @@ from src.util.dataclasses import EpochedDataSet
 
 
 def oversampling(file_path: Optional[str] = None, epoched_data: Optional[EpochedDataSet] = None) -> EpochedDataSet:
-
     if not epoched_data:
         epoched_data = open_file_pickle(file_path)
 
@@ -25,6 +24,7 @@ def oversampling(file_path: Optional[str] = None, epoched_data: Optional[Epoched
     else:
         class_idx = 1
         minority_count = positive_feedbacks
+
     class_idxs = np.where(epoched_data.labels[:, 4] == class_idx)[0]
     idxs = np.repeat(class_idxs.tolist(), abs(diff) // minority_count)
     remain = abs(diff) % minority_count

@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report
 from tqdm import tqdm
 
 from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TESTING_INTERVAL, CONTINUOUS_TEST_BATCH_SIZE, \
-    PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME, FEEDBACK_WINDOW_OFFSET
+    PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME
 from src.data.build_dataset import build_dataset, build_continuous_dataset
 from src.data.util import save_file_pickle
 from src.evaluation.evaluate import build_evaluation_metrics
@@ -57,20 +57,23 @@ def train_lda(dataset_file_path: Optional[str] = None, dataset: Optional[Epoched
     x_val = [sample[0].reshape(-1) for sample in val_set]
     y_val = [sample[1][4] for sample in val_set]
 
-    pca_features = 158
+
+    pre_pca = PCA()
+    pre_pca.fit(x_train, y_train)
+    n_pca_features = sum(pre_pca.explained_variance_ratio_.cumsum() <= 0.99)
+    print(f"PCA would need {n_pca_features}"
+          f" features to explain 99% of variance")
+
     pipeline = Pipeline([
-        ("pca", PCA(n_components=pca_features)),
+        ("pca", PCA(n_components=n_pca_features)),
         ("lda", LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto'))
     ])
 
     print("Training LDA...")
     pipeline.fit(x_train, y_train)
 
-    print(f"PCA would need {sum(pipeline.steps[0][1].explained_variance_ratio_.cumsum() <= 0.99)}"
-          f" features to explain 99% of variance")
-    print(f"Current PCA has {pca_features} features")
-
     y_pred = pipeline.predict(x_val)
+    print("Validation report:")
     print(classification_report(y_val, y_pred))
 
     _, _, test_set = build_continuous_dataset(continous_dataset_path)
@@ -92,7 +95,3 @@ def train_lda(dataset_file_path: Optional[str] = None, dataset: Optional[Epoched
                                        torch.from_numpy(y_subj_idx))
     save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
                      f"metrics_{EXPERIMENT_NAME}_continuous_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")
-
-
-if __name__ == "__main__":
-    train_lda()

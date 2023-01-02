@@ -3,7 +3,6 @@ from typing import Tuple
 import comet_ml
 import datetime
 import pytorch_lightning as pl
-import pickle as pk
 
 from settings import EXPERIMENT_NAME
 

@@ -1,13 +1,12 @@
 import math
 from datetime import datetime
-from typing import List
+from typing import List, Union
 
 import torch
-from matplotlib import pyplot as plt
 import pytorch_lightning as pl
 from torchmetrics.functional import precision, f1_score, recall, stat_scores, specificity, accuracy
 
-from settings import CKPT_PATH, PROJECT_IMAGES_FOLDER, EXPERIMENT_NAME, PROJECT_RESULTS_FOLDER
+from settings import CKPT_PATH, EXPERIMENT_NAME, PROJECT_RESULTS_FOLDER
 from src.Models.model_core import ModelCore
 from src.data.Datamodule import DataModule
 from src.data.util import save_file_pickle
@@ -16,11 +15,13 @@ from src.plots.average_around_event import plot_average_around_event
 from src.plots.prediction_variance import plot_prediction_variance
 from src.plots.roc_auc import plot_roc_auc
 from src.util.dataclasses import EvaluationMetrics, StatScores
-from sklearn.metrics import roc_curve, auc
 
 
-def calculate_metrics_ensemble(trainer, models: List[ModelCore], datamodule, ckpt_path) -> EvaluationMetrics:
+def calculate_metrics(trainer, models: Union[ModelCore, List[ModelCore]], datamodule, ckpt_path) -> EvaluationMetrics:
+    if not isinstance(models, list):
+        models = [models]
     all_y_predictions = []
+
     for model in models:
         trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
         y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
@@ -28,16 +29,10 @@ def calculate_metrics_ensemble(trainer, models: List[ModelCore], datamodule, ckp
 
     all_y_predictions = torch.stack(all_y_predictions)
     y_predicted = all_y_predictions.mean(dim=0)
-    y_variance = all_y_predictions.std(dim=0)
+    if len(models) > 1:
+        y_variance = all_y_predictions.std(dim=0)
 
-    return build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx)
-
-
-def calculate_metrics(trainer, model: ModelCore, datamodule, ckpt_path) -> EvaluationMetrics:
-    trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
-    y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
-
-    return build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx)
+    return build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx)  # noqa
 
 
 def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx) -> EvaluationMetrics:
@@ -63,7 +58,7 @@ def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution,
     try:
         mcc = ((tp * tn) - (fp * fn)) / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
         n_mcc = (mcc + 1) / 2
-    except:
+    except Exception:
         mcc = -1
         n_mcc = -1
     negative_predictive_value = tn / max(1, (tn + fn))
@@ -91,7 +86,7 @@ def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution,
 
 
 def log_evaluation_metrics_to_comet(evaluation_metrics: EvaluationMetrics,
-                                    comet_logger: pl.loggers.CometLogger,
+                                    comet_logger: pl.loggers.CometLogger, # noqa
                                     prefix=""):
     log_metric = comet_logger.experiment.log_metric
     log_metric(f"{prefix}true_positives", evaluation_metrics.statscores.tp)
@@ -114,7 +109,7 @@ def log_evaluation_metrics_to_comet(evaluation_metrics: EvaluationMetrics,
                                                  title={prefix})
 
 
-def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_logger: pl.loggers.CometLogger):
+def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_logger: pl.loggers.CometLogger): # noqa
     metrics = calculate_metrics(trainer, model, dm, ckpt_path=CKPT_PATH)
     save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
                      f"metrics_{EXPERIMENT_NAME}_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")
@@ -145,5 +140,3 @@ def log_continuous_metrics(metrics, comet_logger):
     per_participants = split_metrics_per_participant(metrics)
     fig, ax = plot_roc_auc(per_participants)
     comet_logger.experiment.log_figure(figure_name="Per participant ROC", figure=fig)
-
-

@@ -1,7 +1,6 @@
 import math
 import os
 import re
-from functools import cache
 from typing import List, Tuple
 
 import numpy as np
@@ -9,10 +8,13 @@ import pandas as pd
 from scipy.signal import butter, sosfiltfilt, sosfilt
 from tqdm import tqdm
 
-from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, SUBJECTS_IDX, \
+from settings import PROJECT_DATASET_FOLDER, LOCAL_DATASET_ALL_FOLDER, CHANNEL_NAMES, PROJECT_RAW_FOLDER, \
+    SUBJECTS_IDX, \
     SESSIONS_IDX, RUNS_IDX, SAMPLING_FREQUENCY, USE_BANDPASS, BANDPASS_HIGH_FREQ, BANDPASS_LOW_FREQ, BANDPASS_ORDER, \
-    NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER, USE_CAUSAL_BUTTERWORTH, \
-    FILTER_ICA
+    NON_PHYSIOLOGICAL_CHANNELS, EXCLUDE_CHANNELS, INCLUDE_CHANNELS, PROJECT_PREPROCESSED_FOLDER, \
+    USE_CAUSAL_BUTTERWORTH, \
+    FILTER_ICA, N_ICA_COMPONENTS, EOG_CHANNEL, ECG_CHANNEL, EOG_THRESHOLD, HEOG_THRESHOLD, ECG_THRESHOLD, \
+    MUSCLE_THRESHOLD
 from src.data.ica import filter_ica
 from src.data.util import file_names_timeseries_to_iterator
 from src.data.util import save_file_pickle, open_file_pickle
@@ -23,12 +25,10 @@ def indices_to_leading_zeros(indices, n_digits):
     return [str(index).zfill(n_digits) for index in indices]
 
 
-@cache
 def channel_name_to_index(channel_name: str) -> int:
     return CHANNEL_NAMES.index(channel_name)
 
 
-@cache
 def channel_name_to_physiological_index(channel_name: str) -> int:
     physiological_channels = CHANNEL_NAMES
     for non_physiological_channel in NON_PHYSIOLOGICAL_CHANNELS:
@@ -94,6 +94,16 @@ def construct_metadata():
                              'order': BANDPASS_ORDER}
 
         metadata.update({"bandpass_filter": bandpass_metadata})
+
+    if FILTER_ICA:
+        ica_metadata = {"n_components": N_ICA_COMPONENTS,
+                        "EOG_ch": EOG_CHANNEL,
+                        "ECG_ch": ECG_CHANNEL,
+                        "EOG_t": EOG_THRESHOLD,
+                        "HEOG_t": HEOG_THRESHOLD,
+                        "ECG_t": ECG_THRESHOLD,
+                        "musc_t": MUSCLE_THRESHOLD}
+        metadata.update({"ica": ica_metadata})
 
     if EXCLUDE_CHANNELS or INCLUDE_CHANNELS:
         if EXCLUDE_CHANNELS:
@@ -166,19 +176,19 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
     return preprocessed_runs, os.path.dirname(output_file_path)
 
 
-def butter_bandpass_filter(data, lowcut, highcut, fs, order, axis=-1):
-    # Correct for forward-backward filtering (doubles the order)
-    order = math.floor(order / 2)
-    # Design
+def butter_bandpass_filter(signals, lowcut, highcut, fs, order, axis=-1):
+    if not USE_CAUSAL_BUTTERWORTH:
+        # forward-backward (non-causal) doubles to order
+        order = math.floor(order / 2)
+
     nyq = 0.5 * fs
     low = lowcut / nyq
     high = highcut / nyq
     sos = butter(order, [low, high], btype='band', output='sos')
-    # Perform a forward-backward filter: removes phase shift and doubles order of filter
     if USE_CAUSAL_BUTTERWORTH:
-        return sosfilt(sos, data, axis=axis)
+        return sosfilt(sos, signals, axis=axis)
     else:
-        return sosfiltfilt(sos, data, axis=axis)
+        return sosfiltfilt(sos, signals, axis=axis)
 
 
 def metadata2path_code(filt_metadata=None, epoch_metadata=None, bal_metadata=None):
@@ -197,10 +207,10 @@ def metadata2path_code(filt_metadata=None, epoch_metadata=None, bal_metadata=Non
         bp = filt_metadata['bandpass_filter']
         ans += "bp[low:{},high:{},ord:{}]{}".format(bp['low_freq'], bp['high_freq'], bp['order'], spacing)
 
-    # Noise reduction
-    if 'noise...' in filt_metadata:
-        noise = filt_metadata['noise...']
-        ans += "Noise[...{}...{}]{}".format(noise['...1'], noise['...2'], spacing)
+    if 'ica' in filt_metadata:
+        ica = filt_metadata['ica']
+        ans += "ica[n:{}, ch:{},{}, ts:{},{},{},{}]".format(ica["n_components"], ica['EOG_ch'], ica['ECG_ch'],
+                                                            ica['EOG_t'], ica['HEOG_t'], ica['ECG_t'], ica['musc_t'])
 
     # Channel selection
     if 'channel_selection' in filt_metadata:

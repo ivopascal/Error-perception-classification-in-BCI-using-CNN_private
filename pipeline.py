@@ -7,7 +7,7 @@ from train_test_lda import train_lda
 def main():
     dataset, continous_dataset_path = preprocess()
     if MODEL_TYPE == "Pytorch":
-        train(dataset=dataset, continous_dataset_path=continous_dataset_path)
+        train(dataset=dataset, continuous_dataset_path=continous_dataset_path)
     elif MODEL_TYPE == "SKLearn":
         train_lda(dataset=dataset, continous_dataset_path=continous_dataset_path)
 

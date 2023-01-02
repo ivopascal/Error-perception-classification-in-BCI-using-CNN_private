@@ -1,13 +1,8 @@
 import random
+import comet_ml
 
 import mne
 
-from src.Models.ConvNet import ConvNet64C
-from src.Models.EegNet import EEGNet, BayesianEEGNet, ProperEEGNet, TorchEEGNet, LargeTorchEEGNet
-from src.Models.CorreiaNet import CorreiaNet, BayesianCorreiaNet
-
-# Project folders settings
-from src.Models.FBCNet import FBCNet
 
 PROJECT_ROOT_FOLDER = "/Users/ivopascal/Documents/PhD/Error-perception-classification-in-BCI-using-CNN/BCI_root/"
 PROJECT_DATASET_FOLDER = PROJECT_ROOT_FOLDER + "Datasets/Monitoring_error-related_potentials_2015/"
@@ -51,25 +46,25 @@ N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
 EOG_CHANNEL = "Fpz"
 ECG_CHANNEL = "Fpz"
 EOG_THRESHOLD = 0.8
-HEOG_THRESHOLD = 0.9
-ECG_THRESHOLD = 0.9
-MUSCLE_THRESHOLD = 0.5
+HEOG_THRESHOLD = 0.6
+ECG_THRESHOLD = 0.6
+MUSCLE_THRESHOLD = 0.7
 MONTAGE = 'standard_1020'  # 3D layout of channels
 mne.set_log_level("ERROR")
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
-OVERRIDE_SAVES = True
+OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
 EXPERIMENT_NAME = "EEGNet_ICA_BENCH"
-DEBUG_MODE = False
+DEBUG_MODE = True
 OVERRIDEN_HYPER_PARAMS = {
 }
 
 
-MODEL_CLASS = ProperEEGNet
+MODEL_CLASS_NAME = "EegNet.ProperEEGNet"
 
 MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
