@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytorch_lightning as pl
 
-from settings import DEBUG_MODE, PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME, \
+from settings import PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME, \
     CONTINUOUS_TESTING_INTERVAL
 from src.data.Datamodule import ContinuousDataModule
 from src.data.build_dataset import build_continuous_dataset
@@ -20,9 +20,6 @@ def test_continuous(models, comet_logger, dataset_folder):
 
     if not models:
         raise ValueError("Models needs to be provided")
-
-    if DEBUG_MODE:
-        test_set = test_set[0][:1], test_set[1][:1]
 
     dm = ContinuousDataModule(train_set, val_set, test_set,
                               batch_size=models[0].hyper_params["batch_size"],

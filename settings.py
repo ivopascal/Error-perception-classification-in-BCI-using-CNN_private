@@ -1,4 +1,5 @@
 import random
+import comet_ml
 
 import mne
 
@@ -53,7 +54,7 @@ mne.set_log_level("ERROR")
 
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
-OVERRIDE_SAVES = True
+OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings

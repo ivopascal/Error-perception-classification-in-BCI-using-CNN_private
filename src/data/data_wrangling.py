@@ -103,7 +103,7 @@ def construct_metadata():
                         "HEOG_t": HEOG_THRESHOLD,
                         "ECG_t": ECG_THRESHOLD,
                         "musc_t": MUSCLE_THRESHOLD}
-        metadata.update(ica_metadata)
+        metadata.update({"ica": ica_metadata})
 
     if EXCLUDE_CHANNELS or INCLUDE_CHANNELS:
         if EXCLUDE_CHANNELS:
@@ -207,10 +207,10 @@ def metadata2path_code(filt_metadata=None, epoch_metadata=None, bal_metadata=Non
         bp = filt_metadata['bandpass_filter']
         ans += "bp[low:{},high:{},ord:{}]{}".format(bp['low_freq'], bp['high_freq'], bp['order'], spacing)
 
-    # Noise reduction
-    if 'noise...' in filt_metadata:
-        noise = filt_metadata['noise...']
-        ans += "Noise[...{}...{}]{}".format(noise['...1'], noise['...2'], spacing)
+    if 'ica' in filt_metadata:
+        ica = filt_metadata['ica']
+        ans += "ica[n:{}, ch:{},{}, ts:{},{},{},{}]".format(ica["n_components"], ica['EOG_ch'], ica['ECG_ch'],
+                                                            ica['EOG_t'], ica['HEOG_t'], ica['ECG_t'], ica['musc_t'])
 
     # Channel selection
     if 'channel_selection' in filt_metadata:
