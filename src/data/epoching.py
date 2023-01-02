@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE, SAMPLING_FREQUENCY, \
-    SLIDING_AUGMENTATION_RANGE
+    SLIDING_AUGMENTATION_RANGE, SLIDING_AUGMENTATION_RANGE_NE
 from src.data.util import file_names_timeseries_to_iterator, save_file_pickle
 from src.util.dataclasses import TimeSeriesRun, EpochedDataSet
 from src.util.util import milliseconds_to_samples
@@ -51,8 +51,8 @@ def epoch_data(file_names: Optional[List[str]] = None, runs: Optional[List[TimeS
 
         # Append individual trial data
         for trial_idx, (label, trial_index) in enumerate(feedback_events):
-            idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET) + milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[0])
-            idx_end = idx_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE) + milliseconds_to_samples(SLIDING_AUGMENTATION_RANGE[1])
+            idx_start = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_OFFSET + SLIDING_AUGMENTATION_RANGE_NE[0])
+            idx_end = trial_index + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE + SLIDING_AUGMENTATION_RANGE_NE[1])
             epoched_data.append(run.session[:, idx_start:idx_end])
             epoched_data_labels.append([subj_idx, sess_idx, run_idx, (trial_idx + 1), label])
 

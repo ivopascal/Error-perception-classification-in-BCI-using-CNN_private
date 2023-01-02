@@ -1,13 +1,17 @@
 from datetime import datetime
 from typing import Optional
 
+import mne
 import numpy as np
 import torch
 from sklearn.metrics import classification_report
+from sklearn.preprocessing import Normalizer
+from sklearn.svm import SVC
 from tqdm import tqdm
 
 from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TESTING_INTERVAL, CONTINUOUS_TEST_BATCH_SIZE, \
-    PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME, FEEDBACK_WINDOW_OFFSET
+    PROJECT_RESULTS_FOLDER, EXPERIMENT_NAME, FEEDBACK_WINDOW_OFFSET, SAMPLING_FREQUENCY, CHANNEL_NAMES, \
+    NON_PHYSIOLOGICAL_CHANNELS, USE_PSD
 from src.data.build_dataset import build_dataset, build_continuous_dataset
 from src.data.util import save_file_pickle
 from src.evaluation.evaluate import build_evaluation_metrics
@@ -30,7 +34,10 @@ def continuous_generator(test_set):
             lower_half = max(i - half_interval, 0)
             upper_half = i + half_interval
             highest_label_in_interval = max(y[4][lower_half: upper_half])
-            yield x[:, i: i + window_size].reshape(-1), y[:4] + [highest_label_in_interval]
+            if USE_PSD:
+                yield x[:, i: i + window_size], y[:4] + [highest_label_in_interval]
+            else:
+                yield x[:, i: i + window_size].reshape(-1), y[:4] + [highest_label_in_interval]
     return
 
 
@@ -40,11 +47,28 @@ def batched(iterable, n):
     it = iter(iterable)
     while True:
         batch = list(islice(it, n))
-        x = [e[0] for e in batch]
+        x_test = [e[0] for e in batch]
         y = [e[1] for e in batch]
+
+        if USE_PSD:
+            x_test = xlist_to_psd(x_test)
+
         if not batch:
             return
-        yield x, y
+        yield x_test, y
+
+
+def xlist_to_psd(xlist):
+    out_psds = []
+    for x in xlist:
+        mne_session = mne.io.RawArray(x,
+                                      mne.create_info(
+                                          ch_names=[ch for ch in CHANNEL_NAMES if
+                                                    ch not in NON_PHYSIOLOGICAL_CHANNELS],
+                                          sfreq=SAMPLING_FREQUENCY, ch_types="eeg"))
+        mne_session, _ = mne.set_eeg_reference(mne_session)
+        out_psds.append(mne_session.compute_psd(fmin=3, fmax=9, method='welch').get_data(fmin=3, fmax=9).reshape(-1))
+    return out_psds
 
 
 def train_lda(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedDataSet] = None,
@@ -52,21 +76,37 @@ def train_lda(dataset_file_path: Optional[str] = None, dataset: Optional[Epoched
     train_set, val_set, test_set = build_dataset(dataset_file_path, dataset)
 
     x_train = [sample[0].reshape(-1) for sample in train_set]
+
+    if USE_PSD:
+        x_train = [sample[0] for sample in train_set]
+        x_train = xlist_to_psd(x_train)
+
     y_train = [sample[1][4] for sample in train_set]
 
     x_val = [sample[0].reshape(-1) for sample in val_set]
     y_val = [sample[1][4] for sample in val_set]
 
-    pca_features = 158
+    if USE_PSD:
+        x_val = [sample[0] for sample in val_set]
+        x_val = xlist_to_psd(x_val)
+
+    pca_features = 124
     pipeline = Pipeline([
+        ("normalize", Normalizer()),
         ("pca", PCA(n_components=pca_features)),
         ("lda", LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto'))
+    ])
+
+    pipeline = Pipeline([
+        ("normalize", Normalizer()),
+        ("pca", PCA(n_components=pca_features)),
+        ("SVM", SVC(probability=True)),
     ])
 
     print("Training LDA...")
     pipeline.fit(x_train, y_train)
 
-    print(f"PCA would need {sum(pipeline.steps[0][1].explained_variance_ratio_.cumsum() <= 0.99)}"
+    print(f"PCA would need {sum(pipeline.steps[1][1].explained_variance_ratio_.cumsum() <= 0.99)}"
           f" features to explain 99% of variance")
     print(f"Current PCA has {pca_features} features")
 

@@ -38,7 +38,13 @@ SAMPLING_FREQUENCY = 512
 # Preprocessing settings
 FEEDBACK_WINDOW_OFFSET = 0
 FEEDBACK_WINDOW_SIZE = 600  # time in ms
-SLIDING_AUGMENTATION_RANGE = [450-600, 150]  # offset and onset range in ms
+SLIDING_AUGMENTATION_RANGE = [-150, 150]  # offset and onset range in ms based on shape of ErrP
+SLIDING_AUGMENTATION_RANGE_NE = [-500, 500]
+
+
+FEEDBACK_WINDOW_SIZE = 1000  # time in ms
+SLIDING_AUGMENTATION_RANGE = [0, 0]  # offset and onset range in ms based on shape of ErrP
+SLIDING_AUGMENTATION_RANGE_NE = [0, 0]
 
 USE_BANDPASS = True
 BANDPASS_ORDER = 6
@@ -48,7 +54,7 @@ USE_CAUSAL_BUTTERWORTH = True
 
 
 FILTER_ICA = False
-N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
+N_ICA_COMPONENTS = 5  # preprocessing 15 already takes about 10 minutes
 EOG_CHANNEL = "Fpz"
 ECG_CHANNEL = "Fpz"
 EOG_THRESHOLD = 0.9
@@ -58,13 +64,15 @@ MUSCLE_THRESHOLD = 0.5
 MONTAGE = 'standard_1020'  # 3D layout of channels
 mne.set_log_level("ERROR")
 
+USE_PSD = True
+
 EXCLUDE_CHANNELS = None
 INCLUDE_CHANNELS = None
 OVERRIDE_SAVES = True
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "EEGNet_Uniform_Sliding"
+EXPERIMENT_NAME = "OOD-class-TEST-EEGNet"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }

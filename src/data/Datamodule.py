@@ -4,8 +4,11 @@ import torch
 from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data.dataset import T_co
 import random
+
+from tqdm import tqdm
+
 from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TEST_BATCH_SIZE, FEEDBACK_WINDOW_OFFSET, \
-    SLIDING_AUGMENTATION_RANGE
+    SLIDING_AUGMENTATION_RANGE, SLIDING_AUGMENTATION_RANGE_NE
 from src.util.util import milliseconds_to_samples
 
 
@@ -31,12 +34,37 @@ class DataModule(pl.LightningDataModule):
         x, y = batch
         if self.trainer.training:
             samples = []
-            for sample in x:
-                for t_start in range(0, -SLIDING_AUGMENTATION_RANGE[0] + SLIDING_AUGMENTATION_RANGE[1]):
-                    samples.append(sample[:, t_start: t_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)])
+            ys = []
+            for sample, y_i in zip(x, y):
+                if y_i[4] == 0:
+                    lower_limit = SLIDING_AUGMENTATION_RANGE[0] - SLIDING_AUGMENTATION_RANGE_NE[0]
+                    upper_limit = -SLIDING_AUGMENTATION_RANGE_NE[0] + SLIDING_AUGMENTATION_RANGE[1]
+                    middle = (lower_limit + upper_limit) / 2
+                    scale = (upper_limit - lower_limit) / 3
+                    indices = np.random.normal(middle, scale, 10)
+                    indices = np.minimum([upper_limit] * 10, indices)
+                    indices = np.maximum([lower_limit] * 10, indices)
+                    for t_start_ms in indices:
+                        t_start = milliseconds_to_samples(t_start_ms)
+                        samples.append(sample[:, t_start: t_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)])
+                        ys.append(y_i)
+                else:
+                    lower_limit = 0
+                    upper_limit = -SLIDING_AUGMENTATION_RANGE_NE[0] + SLIDING_AUGMENTATION_RANGE_NE[1]
+                    middle = (lower_limit + upper_limit) / 2
+                    scale = (upper_limit - lower_limit) / 3
+                    indices = np.random.normal(middle, scale, 10)
+                    indices = np.minimum([upper_limit] * 10, indices)
+                    indices = np.maximum([lower_limit] * 10, indices)
+                    for t_start_ms in indices:
+                        t_start = milliseconds_to_samples(t_start_ms)
+                        samples.append(sample[:, t_start: t_start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)])
+                        ys.append(y_i)
             x = torch.stack(samples)
+            y = torch.stack(ys)
         else:
-            x = x[:, :, milliseconds_to_samples(-SLIDING_AUGMENTATION_RANGE[0] + FEEDBACK_WINDOW_OFFSET):]
+            start = milliseconds_to_samples(-SLIDING_AUGMENTATION_RANGE_NE[0] + FEEDBACK_WINDOW_OFFSET)
+            x = x[:, :, start: start + milliseconds_to_samples(FEEDBACK_WINDOW_SIZE)]
         return x, y
 
 
