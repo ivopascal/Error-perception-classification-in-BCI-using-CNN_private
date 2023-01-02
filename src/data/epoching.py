@@ -6,7 +6,7 @@ from src.data.data_wrangling import metadata2path_code
 import numpy as np
 from tqdm import tqdm
 
-from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE, SAMPLING_FREQUENCY
+from settings import PROJECT_EPOCHED_FOLDER, FEEDBACK_WINDOW_OFFSET, FEEDBACK_WINDOW_SIZE
 from src.data.util import file_names_timeseries_to_iterator, save_file_pickle
 from src.util.dataclasses import TimeSeriesRun, EpochedDataSet
 from src.util.util import milliseconds_to_samples

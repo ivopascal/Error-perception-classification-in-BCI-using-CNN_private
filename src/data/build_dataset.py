@@ -3,7 +3,6 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 from torch.utils.data.dataset import random_split
 import os
-import pickle as pk
 
 from tqdm import tqdm
 
@@ -31,14 +30,13 @@ def build_dataset(filepath: Optional[str] = None, dataset: Optional[EpochedDataS
     if not dataset:
         dataset = open_file_pickle(filepath)
 
-    data = np.array(dataset.data, dtype="float32")
+    x = np.array(dataset.data, dtype="float32")
     train_idxs, val_idxs, test_idxs = split_all_subject_by_session(dataset.labels)
 
-    return apply_split_indices(data, dataset.labels, split_indices=(train_idxs, val_idxs, test_idxs))
+    return apply_split_indices(x, dataset.labels, split_indices=(train_idxs, val_idxs, test_idxs))
 
 
 def build_continuous_dataset(folderpath: str):
-
     train_val_x = []
     train_val_y = []
     test_x = []
@@ -75,19 +73,15 @@ def build_continuous_dataset(folderpath: str):
     return (x_train, y_train), (x_val, y_val), (test_x, test_y)
 
 
-def apply_split_indices(data, data_labels, split_indices):
-    train_idxs, val_idxs, test_idxs = split_indices
-    train_set = []
-    for train_idx in train_idxs:
-        train_set.append([data[train_idx], data_labels[train_idx]])
-    val_set = []
-    for val_idx in val_idxs:
-        val_set.append([data[val_idx], data_labels[val_idx]])
-    test_set = []
-    for test_idx in test_idxs:
-        test_set.append([data[test_idx], data_labels[test_idx]])
+def _apply_single_indices(x, y, indices):
+    result_set = []
+    for idx in indices:
+        result_set.append([x[idx], y[idx]])
+    return result_set
 
-    return train_set, val_set, test_set
+
+def apply_split_indices(x, y, split_indices):
+    return [_apply_single_indices(x, y, idxs) for idxs in split_indices]
 
 
 def split_all_subject_by_session(data_labels):

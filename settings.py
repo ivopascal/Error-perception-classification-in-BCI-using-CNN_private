@@ -2,12 +2,6 @@ import random
 
 import mne
 
-from src.Models.ConvNet import ConvNet64C
-from src.Models.EegNet import EEGNet, BayesianEEGNet, ProperEEGNet, TorchEEGNet, LargeTorchEEGNet
-from src.Models.CorreiaNet import CorreiaNet, BayesianCorreiaNet
-
-# Project folders settings
-from src.Models.FBCNet import FBCNet
 
 PROJECT_ROOT_FOLDER = "/Users/ivopascal/Documents/PhD/Error-perception-classification-in-BCI-using-CNN/BCI_root/"
 PROJECT_DATASET_FOLDER = PROJECT_ROOT_FOLDER + "Datasets/Monitoring_error-related_potentials_2015/"

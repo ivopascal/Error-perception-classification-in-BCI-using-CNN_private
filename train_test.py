@@ -3,7 +3,7 @@ from typing import Optional, cast
 
 from pytorch_lightning.callbacks import EarlyStopping
 
-from continuous import test_continuous, test_ensemble_continuous
+from continuous import test_continuous
 from src.Models.model_core import ModelCore
 from src.comet_logging.comet_logger import get_cometlogger, perform_basic_logging
 import pytorch_lightning as pl
@@ -13,13 +13,15 @@ from pydoc import locate
 
 from src.data.Datamodule import DataModule
 from src.data.build_dataset import build_dataset
-from src.evaluation.evaluate import evaluate_model, calculate_metrics_ensemble, log_evaluation_metrics_to_comet
+from src.evaluation.evaluate import evaluate_model, log_evaluation_metrics_to_comet, calculate_metrics
 from settings import PROJECT_MODEL_SAVES_FOLDER, OVERRIDEN_HYPER_PARAMS, MODEL_CLASS_NAME, \
     EXPERIMENT_NAME, ENSEMBLE_SIZE, EARLY_STOPPING_PATIENCE
 from src.util.dataclasses import EpochedDataSet
 
 
-def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedDataSet] = None, continous_dataset_path=None):
+def train(dataset_file_path: Optional[str] = None,
+          dataset: Optional[EpochedDataSet] = None,
+          continuous_dataset_path=None):
     train_set, val_set, test_set = build_dataset(dataset_file_path, dataset)
 
     experiment_creation_time = datetime.now().strftime("[%Y-%m-%d,%H:%M]")
@@ -70,17 +72,13 @@ def train(dataset_file_path: Optional[str] = None, dataset: Optional[EpochedData
         evaluate_model(trainer, dm, model, comet_logger)
 
         models.append(model)
+        comet_logger.experiment.end()
 
-    if len(models) == 1:
-        test_continuous(model=models[0], comet_logger=comet_logger, dataset_folder=continous_dataset_path)
-    else:
+    comet_logger, _ = get_cometlogger()
+    metrics = calculate_metrics(trainer, models, dm, ckpt_path=None) # noqa
+    log_evaluation_metrics_to_comet(metrics, comet_logger, prefix="Ensemble_")
 
-        metrics = calculate_metrics_ensemble(trainer, models, dm, ckpt_path=None)
-        log_evaluation_metrics_to_comet(metrics, comet_logger, prefix="Ensemble_")
-
-        test_ensemble_continuous(models=models, comet_logger=comet_logger, dataset_folder=continous_dataset_path)
-
-    comet_logger.experiment.end()
+    test_continuous(models=models, comet_logger=comet_logger, dataset_folder=continuous_dataset_path)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,7 @@
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, IterableDataset
 from torch.utils.data.dataset import T_co
-import random
-from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TEST_BATCH_SIZE, FEEDBACK_WINDOW_OFFSET
+from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TEST_BATCH_SIZE
 from src.util.util import milliseconds_to_samples
 
 

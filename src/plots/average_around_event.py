@@ -10,13 +10,7 @@ from settings import CONTINUOUS_TESTING_INTERVAL
 from src.util.util import milliseconds_to_samples, samples_to_milliseconds
 
 
-def plot_average_around_event(metrics, lower_window_ms, upper_window_ms, testing_interval=CONTINUOUS_TESTING_INTERVAL,
-                              y_to_plot=None, label_prefix="", figax=None) -> Tuple[Figure, Axes]:
-    lower_window = int(milliseconds_to_samples(lower_window_ms) / testing_interval)
-    upper_window = int(milliseconds_to_samples(upper_window_ms) / testing_interval)
-
-    x = [samples_to_milliseconds(step) * testing_interval for step in range(lower_window, upper_window)]
-
+def _collect_recording_around_event(metrics, lower_window, upper_window, y_to_plot):
     y_true_id = 1 - metrics.y_true.clone().double()
     y_true_id[~metrics.y_in_distribution] = 0.5
 
@@ -36,8 +30,8 @@ def plot_average_around_event(metrics, lower_window_ms, upper_window_ms, testing
                       event_indices[0][event_index] + lower_window: event_indices[0][event_index] + upper_window])
         y_variances.append(metrics.y_variance[
                            event_indices[0][event_index] + lower_window: event_indices[0][event_index] + upper_window])
-        y_predictions.append(1 - metrics.y_predicted[event_indices[0][event_index] + lower_window: event_indices[0][
-                                                                                                       event_index] + upper_window])
+        y_predictions.append(1 - metrics.y_predicted[event_indices[0][event_index] + lower_window:
+                                                     event_indices[0][event_index] + upper_window])
         y_trues.append(
             y_true_id[event_indices[0][event_index] + lower_window: event_indices[0][event_index] + upper_window])
 
@@ -46,6 +40,10 @@ def plot_average_around_event(metrics, lower_window_ms, upper_window_ms, testing
     stacked_predictions = torch.vstack(y_predictions)
     stacked_trues = torch.vstack(y_trues)
 
+    return stacked_subjects, stacked_variances, stacked_predictions, stacked_trues
+
+
+def _separate_recordings_per_participant(stacked_subjects, stacked_variances, stacked_predictions, stacked_trues):
     predictions_per_participant = []
     variances_per_participant = []
     trues_per_participant = []
@@ -58,14 +56,32 @@ def plot_average_around_event(metrics, lower_window_ms, upper_window_ms, testing
         trues_per_participant.append(
             stacked_trues[stacked_subjects == i].reshape(-1, stacked_subjects.shape[1]).mean(axis=0))
 
-    avg_variances = torch.vstack(variances_per_participant).mean(axis=0)
-    std_variances = torch.vstack(variances_per_participant).std(dim=0)
+    return torch.vstack(predictions_per_participant), \
+           torch.vstack(variances_per_participant), \
+           torch.vstack(trues_per_participant)
 
-    avg_predictions = torch.vstack(predictions_per_participant).mean(axis=0)
-    std_predictions = torch.vstack(predictions_per_participant).std(dim=0)
 
-    avg_trues = torch.vstack(trues_per_participant).mean(axis=0)
-    std_trues = torch.vstack(trues_per_participant).std(dim=0)
+def plot_average_around_event(metrics, lower_window_ms, upper_window_ms, testing_interval=CONTINUOUS_TESTING_INTERVAL,
+                              y_to_plot=None, label_prefix="", figax=None) -> Tuple[Figure, Axes]:
+    lower_window = int(milliseconds_to_samples(lower_window_ms) / testing_interval)
+    upper_window = int(milliseconds_to_samples(upper_window_ms) / testing_interval)
+    x = [samples_to_milliseconds(step) * testing_interval for step in range(lower_window, upper_window)]
+
+    recordings = _collect_recording_around_event(metrics,
+                                                 lower_window,
+                                                 upper_window,
+                                                 y_to_plot)
+    predictions_per_participant, variances_per_participant, trues_per_participant = \
+        _separate_recordings_per_participant(*recordings)
+
+    avg_variances = variances_per_participant.mean(axis=0)
+    std_variances = variances_per_participant.std(dim=0)
+
+    avg_predictions = predictions_per_participant.mean(axis=0)
+    std_predictions = predictions_per_participant.std(dim=0)
+
+    avg_trues = trues_per_participant.mean(axis=0)
+    std_trues = trues_per_participant.std(dim=0)
 
     if not figax:
         fig, ax = plt.subplots()
