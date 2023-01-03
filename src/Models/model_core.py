@@ -117,7 +117,7 @@ class ModelCore(pl.LightningModule):
         elif self.get_n_output_nodes() == 2:
             y_hat = y_logits.argmax(dim=1)
             acc = accuracy(y_hat, y, task="binary")
-            y_predicted = y_hat
+            y_predicted = y_logits[:, 1]
         else:
             raise ValueError("Output nodes larger than 2 have not been considered")
 

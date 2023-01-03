@@ -78,8 +78,8 @@ class TwoHeadPredictModel(nn.Module):
         stds = self.preprocess_variance_output(variances)
 
         y_logits_mean = means.mean(dim=0)
-        mixture_var = (stds.square() + means.square()).mean(axis=0) - y_logits_mean.square()
-        mixture_var[mixture_var < 0.0] = 0.0
+        # mixture_var = (stds.square() + means.square()).mean(axis=0) - y_logits_mean.square()
+        # mixture_var[mixture_var < 0.0] = 0.0
 
         y_logits_std_epi = means.std(dim=0)
         y_logits_std_ale = stds.mean(dim=0)
@@ -90,8 +90,8 @@ class TwoHeadPredictModel(nn.Module):
         y_probs_epi = sampling_softmax([y_logits_mean, y_logits_std_epi])
         y_probs_ale = sampling_softmax([y_logits_mean, y_logits_std_ale])
 
-        ale_entropy = uncertainty(y_probs_ale.cpu().numpy())
-        epi_entropy = uncertainty(y_probs_epi.cpu().numpy())
+        ale_entropy = torch.Tensor(uncertainty(y_probs_ale.cpu().numpy()))
+        epi_entropy = torch.Tensor(uncertainty(y_probs_epi.cpu().numpy()))
 
         return y_probs, ale_entropy, epi_entropy
 
@@ -120,7 +120,7 @@ class DisentangledModel(ProperEEGNet):
 
         disentangle_logs = {"pred_mean": pred_mean,
                             "ale_uncertainty": ale_uncertainty,
-                            "epi_uncertaitny": epi_uncertainty}
+                            "epi_uncertainty": epi_uncertainty}
 
         test_step_output = super().test_step(batch, batch_idx)
 

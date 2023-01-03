@@ -27,7 +27,7 @@ def calculate_metrics(trainer, models: Union[ModelCore, List[ModelCore]], datamo
         y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
         all_y_predictions.append(y_predicted)
 
-    all_y_predictions = torch.stack(all_y_predictions)
+    all_y_predictions = torch.stack(all_y_predictions).type(dtype=torch.float32)
     y_predicted = all_y_predictions.mean(dim=0)
     if len(models) > 1:
         y_variance = all_y_predictions.std(dim=0)

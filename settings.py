@@ -59,7 +59,7 @@ BALANCE_DATASET = True
 
 # Training settings
 EXPERIMENT_NAME = "EEGNet_Disentangling"
-DEBUG_MODE = True
+DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
 
