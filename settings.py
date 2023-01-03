@@ -58,13 +58,13 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "EEGNet_ICA_BENCH"
+EXPERIMENT_NAME = "EEGNet_Disentangling"
 DEBUG_MODE = True
 OVERRIDEN_HYPER_PARAMS = {
 }
 
 
-MODEL_CLASS_NAME = "EegNet.ProperEEGNet"
+MODEL_CLASS_NAME = "disentangled.DisentangledModel"
 
 MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
@@ -79,7 +79,7 @@ random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
 
-ENSEMBLE_SIZE = 5
+ENSEMBLE_SIZE = 1
 
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5

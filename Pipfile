@@ -10,6 +10,7 @@ numpy = "*"
 scipy = "*"
 keras-uncertainty = {editable = true, git = "https://github.com/mvaldenegro/keras-uncertainty.git"}
 torcheeg = "*"
+torch = "*"
 
 [dev-packages]
 

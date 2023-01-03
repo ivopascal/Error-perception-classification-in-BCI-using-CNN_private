@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -94,3 +95,80 @@ class SeparableConv2d(nn.Module):
         out = self.depthwise(x)
         out = self.pointwise(out)
         return out
+
+
+class SamplingSoftmax(nn.Module):
+    """
+        Sigmoid activation with Gaussian logits. Receives mean/variance logits and computes the softmax output through sampling.
+    """
+
+    def __init__(self, num_samples=50, temperature=1.0, variance_type="linear_std") -> None:
+        """
+        Args:
+            num_samples: Number of samples used to compute the softmax approximation.
+                         This parameter controls the trade-off between computation and approximation quality.
+            variance_type: Assumptions made on the variance input, possible values are:
+                logit: Input is a variance logit, an exponential transformation will be applied to produce standard deviation.
+                linear_std: Input is standard deviation, no transformations are applied.
+                linear_variance: Input is variance, square root will be applied to obtain standard deviation.
+        """
+        super().__init__()
+
+        assert variance_type in ["logit", "linear_std", "linear_variance"]
+
+        self.num_samples = num_samples
+        self.temperature = temperature
+        self.variance_type = variance_type
+
+    def __repr__(self):
+        return f'SamplingSoftmax'
+
+    def preprocess_variance_input(self, var_input):
+        if self.variance_type == "logit":
+            return torch.exp(var_input)
+
+        if self.variance_type == "linear_variance":
+            return torch.sqrt(var_input)
+
+        return var_input
+
+    def forward(self, inputs):
+        assert len(inputs) == 2, "This layer requires exactly two inputs (mean and variance logits)"
+
+        logit_mean, logit_var = inputs
+        logit_std = self.preprocess_variance_input(logit_var)
+        repetitions = [1, self.num_samples, 1]
+
+        logit_mean = torch.unsqueeze(logit_mean, dim=1)
+        logit_mean = logit_mean.repeat(repetitions)
+
+        logit_std = torch.unsqueeze(logit_std, dim=1)
+        logit_std = logit_std.repeat(repetitions)
+
+        logit_samples = torch.randn_like(logit_mean) * logit_std + logit_mean
+
+        # Apply max normalization for numerical stability
+        logit_samples = logit_samples - torch.max(logit_samples, dim=-1, keepdim=True)[0]
+
+        # Apply temperature scaling to logits
+        logit_samples = logit_samples / self.temperature
+
+        prob_samples = torch.softmax(logit_samples, dim=-1) # Make this softmax for sampling softmax
+        probs = torch.mean(prob_samples, dim=1)
+
+        # This is required due to approximation error, without it probabilities can sum to 1.01 or 0.99
+        probs = probs / torch.sum(probs, dim=-1, keepdim=True)
+
+        return probs
+
+
+class Softplus(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+    def __repr__(self):
+        return "Softplus"
+
+    def forward(self, x):
+        return torch.log(torch.exp(x + 1))

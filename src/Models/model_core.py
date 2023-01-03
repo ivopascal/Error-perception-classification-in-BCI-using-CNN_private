@@ -1,12 +1,10 @@
 from abc import abstractmethod
 
-import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from torchmetrics import Accuracy
+from torchmetrics.functional import accuracy
 
 from src.util.nn_modules import enable_dropout
 
@@ -29,8 +27,6 @@ class ModelCore(pl.LightningModule):
 
         self.model = self.create_model_architecture()
         self.loss_function = self.get_loss_function()
-
-        self.accuracy = Accuracy(task="binary")
 
     def get_hyperparams(self):
         return self.hyper_params
@@ -72,10 +68,12 @@ class ModelCore(pl.LightningModule):
 
         if self.get_n_output_nodes() == 1:
             y_logits = y_logits.view(y_logits.shape[0])
-            acc = self.accuracy(y_logits, y)
+            acc = accuracy(y_logits, y, task="binary")
         elif self.get_n_output_nodes() == 2:
-            y_hat = torch.round(F.softmax(y_logits, dim=-1))
-            acc = self.accuracy(y_hat, y)
+            y_hat = y_logits.argmax(dim=1)
+            acc = accuracy(y_hat, y, task="binary")
+            # y_logits = y_logits[:, 0]
+            y = nn.functional.one_hot(y, num_classes=2)
         else:
             raise ValueError("Outputs with more than 2 nodes have not been considered.")
 
@@ -102,7 +100,7 @@ class ModelCore(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         x, y_all = batch
         if isinstance(y_all, list):  # when doing continuous testing for some reason this is a list
-            y_all = torch.stack(y_all, axis=1)
+            y_all = torch.stack(y_all, dim=1)
         y = y_all[:, 4].clone()
         y[y == -1] = 1  # Set a value for OoD
 
@@ -114,25 +112,23 @@ class ModelCore(pl.LightningModule):
 
         if self.get_n_output_nodes() == 1:
             y_predicted = y_logits.view(y_logits.shape[0])
-            acc = self.accuracy(y_predicted, y)
+            acc = accuracy(y_predicted, y, task="binary")
 
         elif self.get_n_output_nodes() == 2:
-            raise NotImplementedError("2 output nodes is probably not correctly implemented now")
-            y_hat = torch.round(F.softmax(y_logits, dim=-1))
-            acc = self.accuracy(y_hat, y)
-            y_predicted = torch.tensor([int(x[0] == 0) for x in y_hat])
-
+            y_hat = y_logits.argmax(dim=1)
+            acc = accuracy(y_hat, y, task="binary")
+            y_predicted = y_hat
         else:
             raise ValueError("Output nodes larger than 2 have not been considered")
 
         subj_accs = {}
         for subj_index in range(1, 7):
             if subj_index in y_all[:, 0]:
-                subj_accs[f"acc_{subj_index}"] = self.accuracy(
+                subj_accs[f"acc_{subj_index}"] = accuracy(
                     y_predicted[y_all[:, 0] == subj_index],
-                    y[y_all[:, 0] == subj_index]
+                    y[y_all[:, 0] == subj_index],
+                    task="binary"
                 )
-
 
         log = {
             'acc': acc.clone().detach(),
@@ -194,7 +190,7 @@ class ModelCore(pl.LightningModule):
             all_predictions.append(batch_prediction)
 
         all_predictions = torch.stack(all_predictions)
-        return all_predictions.mean(dim=0), all_predictions.var(axis=0)
+        return all_predictions.mean(dim=0), all_predictions.var(dim=0)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.hyper_params['batch_size'], num_workers=8, shuffle=True)
