@@ -61,8 +61,8 @@ class ModelCore(pl.LightningModule):
 
         return self.model(x)
 
-    def calculate_loss_and_accuracy(self, train_batch, name):
-        x, y = train_batch
+    def calculate_loss_and_accuracy(self, batch, name):
+        x, y = batch
         y = y[:, 4]  # get only label
 
         y_logits = self.forward(x)
@@ -73,7 +73,6 @@ class ModelCore(pl.LightningModule):
         elif self.get_n_output_nodes() == 2:
             y_hat = y_logits.argmax(dim=1)
             acc = accuracy(y_hat, y, task="binary")
-            # y_logits = y_logits[:, 0]
             y = nn.functional.one_hot(y, num_classes=2)
         else:
             raise ValueError("Outputs with more than 2 nodes have not been considered.")

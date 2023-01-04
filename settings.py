@@ -70,7 +70,7 @@ MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
-EARLY_STOPPING_PATIENCE = 10
+EARLY_STOPPING_PATIENCE = 30
 # Evaluate settings
 CKPT_PATH = 'last'
 

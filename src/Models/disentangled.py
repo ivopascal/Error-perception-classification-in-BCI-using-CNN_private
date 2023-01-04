@@ -89,8 +89,8 @@ class TwoHeadPredictModel(nn.Module):
         y_probs_epi = sampling_softmax([y_logits_mean, y_logits_std_epi])
         y_probs_ale = sampling_softmax([y_logits_mean, y_logits_std_ale])
 
-        ale_entropy = torch.Tensor(uncertainty(y_probs_ale.cpu().numpy()))
-        epi_entropy = torch.Tensor(uncertainty(y_probs_epi.cpu().numpy()))
+        ale_entropy = torch.Tensor(uncertainty(y_probs_ale.detach().cpu().numpy()))
+        epi_entropy = torch.Tensor(uncertainty(y_probs_epi.detach().cpu().numpy()))
 
         return y_probs, ale_entropy, epi_entropy
 
@@ -109,13 +109,15 @@ class DisentangledModel(ProperEEGNet):
         self.predict_model = TwoHeadPredictModel(self.train_model, self.get_hyperparams()['two_head_passes'],)
         return self.train_model
 
-    def test_step(self, batch, batch_idx):
-
+    def _predict_disentangled_uncertainties(self, batch):
         x, y_all = batch
 
         x = x.view(x.shape[0], 1, x.shape[1], x.shape[2])
 
-        pred_mean, ale_uncertainty, epi_uncertainty = self.predict_model(x)
+        return self.predict_model(x)
+
+    def test_step(self, batch, batch_idx):
+        pred_mean, ale_uncertainty, epi_uncertainty = self._predict_disentangled_uncertainties(batch)
 
         disentangle_logs = {"pred_mean": pred_mean,
                             "ale_uncertainty": ale_uncertainty,
@@ -124,6 +126,16 @@ class DisentangledModel(ProperEEGNet):
         test_step_output = super().test_step(batch, batch_idx)
 
         return {**test_step_output, **disentangle_logs}
+
+    def calculate_loss_and_accuracy(self, batch, name):
+        pred_mean, ale_uncertainty, epi_uncertainty = self._predict_disentangled_uncertainties(batch)
+
+        self.log_dict({
+            f'ale_uncertainty_{name}': ale_uncertainty.mean(),
+            f'epi_uncertainty_{name}': epi_uncertainty.mean(),
+        })
+
+        return super().calculate_loss_and_accuracy(batch, name)
 
     def test_epoch_end(self, outputs):
         self.ale_uncertainty = torch.stack([x['ale_uncertainty'] for x in outputs])
