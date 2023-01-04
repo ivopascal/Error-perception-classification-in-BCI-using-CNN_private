@@ -86,3 +86,5 @@ if DEBUG_MODE:
     CONTINUOUS_TESTING_INTERVAL = 30
 
 LOG_DISENTANGLED_UNCERTAINTIES = True  # log ale and epi during train/val but is very slow
+
+print("Settings loaded")

@@ -108,7 +108,7 @@ class ModelCore(pl.LightningModule):
             y_logits, y_variance = self.get_mc_predictions(x)
         else:
             y_logits = self.forward(x)
-            y_variance = torch.zeros_like(y_logits)
+            y_variance = torch.zeros(y_logits.shape[0])
 
         if self.get_n_output_nodes() == 1:
             y_predicted = y_logits.view(y_logits.shape[0])
@@ -140,7 +140,7 @@ class ModelCore(pl.LightningModule):
             **log,
             'y_true': y.clone().detach(),
             'y_predicted': y_predicted,
-            'y_pred_variance': y_variance,
+            'y_pred_variance': y_variance.clone().detach(),
             'y_in_distribution': y_all[:, 4] != -1,
         }
 
