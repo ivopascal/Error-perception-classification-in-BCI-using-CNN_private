@@ -3,7 +3,6 @@ import comet_ml
 
 import mne
 
-
 PROJECT_ROOT_FOLDER = "/Users/ivopascal/Documents/PhD/Error-perception-classification-in-BCI-using-CNN/BCI_root/"
 PROJECT_DATASET_FOLDER = PROJECT_ROOT_FOLDER + "Datasets/Monitoring_error-related_potentials_2015/"
 PROJECT_DATASET_PICKLE_FOLDER = PROJECT_DATASET_FOLDER + "Datasets_pickle_files/"
@@ -40,7 +39,6 @@ BANDPASS_LOW_FREQ = 1
 BANDPASS_HIGH_FREQ = 10
 USE_CAUSAL_BUTTERWORTH = True
 
-
 FILTER_ICA = True
 N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
 EOG_CHANNEL = "Fpz"
@@ -62,7 +60,6 @@ EXPERIMENT_NAME = "EEGNet_Disentangling"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
-
 
 MODEL_CLASS_NAME = "disentangled.DisentangledModel"
 
@@ -87,3 +84,5 @@ if DEBUG_MODE:
     if ENSEMBLE_SIZE > 1:
         ENSEMBLE_SIZE = 2
     CONTINUOUS_TESTING_INTERVAL = 30
+
+LOG_DISENTANGLED_UNCERTAINTIES = True  # log ale and epi during train/val but is very slow

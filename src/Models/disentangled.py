@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+from settings import LOG_DISENTANGLED_UNCERTAINTIES
 from src.Models.EegNet import ProperEEGNet
 from src.util.dataclasses import PredLabels
 from src.util.nn_modules import Permute, DepthwiseConv2d, SeparableConv2d, enable_dropout, \
@@ -128,12 +129,13 @@ class DisentangledModel(ProperEEGNet):
         return {**test_step_output, **disentangle_logs}
 
     def calculate_loss_and_accuracy(self, batch, name):
-        pred_mean, ale_uncertainty, epi_uncertainty = self._predict_disentangled_uncertainties(batch)
+        if LOG_DISENTANGLED_UNCERTAINTIES:
+            pred_mean, ale_uncertainty, epi_uncertainty = self._predict_disentangled_uncertainties(batch)
 
-        self.log_dict({
-            f'ale_uncertainty_{name}': ale_uncertainty.mean(),
-            f'epi_uncertainty_{name}': epi_uncertainty.mean(),
-        })
+            self.log_dict({
+                f'ale_uncertainty_{name}': ale_uncertainty.mean(),
+                f'epi_uncertainty_{name}': epi_uncertainty.mean(),
+            })
 
         return super().calculate_loss_and_accuracy(batch, name)
 
