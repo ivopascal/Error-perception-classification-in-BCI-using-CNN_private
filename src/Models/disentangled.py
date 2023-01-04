@@ -1,41 +1,30 @@
 import torch
+import torcheeg.models
 from torch import nn
 
-from settings import LOG_DISENTANGLED_UNCERTAINTIES
+from settings import LOG_DISENTANGLED_UNCERTAINTIES_ON
 from src.Models.EegNet import ProperEEGNet
 from src.util.dataclasses import PredLabels
-from src.util.nn_modules import Permute, DepthwiseConv2d, SeparableConv2d, enable_dropout, \
+from src.util.nn_modules import enable_dropout, \
     SamplingSoftmax, Softplus
 from src.util.util import uncertainty
 
 
 class TwoHeadTrainModel(nn.Module):
-    def __init__(self, F1, D, sampling_rate, n_output_nodes):
+    def __init__(self, F1, D, sampling_rate, n_output_nodes, chunk_size, num_electrodes):
         super().__init__()
         F2 = F1 * D
 
         self.trunc_model = nn.Sequential(
-            Permute((0, 1, 3, 2)),
-            # Layer 1
-            nn.Conv2d(1, F1, (int(sampling_rate / 2), 1), padding=0),
-            nn.BatchNorm2d(F1, False),
-            DepthwiseConv2d(F1, depth_multiplier=D, bias=False, padding='valid'),
-            nn.BatchNorm2d(F2, False),
-            nn.ELU(),
-            nn.AvgPool2d((1, 4)),
-            nn.Dropout(0.25),
-
-            SeparableConv2d(F2, F2, (1, 16), bias=False),
-            nn.BatchNorm2d(F2, False),
-            nn.ELU(),
-
-            nn.AvgPool3d((1, F1, 1)),
-            nn.Dropout(0.25),
-
-            # FC Layer
-            nn.Flatten(),  #
-
-            nn.Linear(192, n_output_nodes),
+            torcheeg.models.EEGNet(chunk_size=chunk_size,
+                                   num_electrodes=num_electrodes,
+                                   F1=F1,
+                                   F2=F2,
+                                   D=D,
+                                   num_classes=n_output_nodes,
+                                   kernel_1=int(sampling_rate / 2),
+                                   kernel_2=int(sampling_rate / 8)
+                                   ),
             nn.Softmax(),
         )
 
@@ -106,7 +95,9 @@ class DisentangledModel(ProperEEGNet):
         self.train_model = TwoHeadTrainModel(self.get_hyperparams()['F1'],
                                              self.get_hyperparams()['D'],
                                              self.get_hyperparams()['sampling_rate'],
-                                             self.get_n_output_nodes())
+                                             self.get_n_output_nodes(),
+                                             self.get_hyperparams()['input_size'][1],
+                                             self.get_hyperparams()['input_size'][0])
         self.predict_model = TwoHeadPredictModel(self.train_model, self.get_hyperparams()['two_head_passes'],)
         return self.train_model
 
@@ -129,7 +120,7 @@ class DisentangledModel(ProperEEGNet):
         return {**test_step_output, **disentangle_logs}
 
     def calculate_loss_and_accuracy(self, batch, name):
-        if LOG_DISENTANGLED_UNCERTAINTIES:
+        if name in LOG_DISENTANGLED_UNCERTAINTIES_ON:
             pred_mean, ale_uncertainty, epi_uncertainty = self._predict_disentangled_uncertainties(batch)
 
             self.log_dict({

@@ -3,12 +3,10 @@ import torcheeg.models
 from src.Models.model_core import ModelCore
 import torch.nn as nn
 
-from src.util.nn_modules import Permute, DepthwiseConv2d, SeparableConv2d, View, Squeeze
+from src.util.nn_modules import Permute, DepthwiseConv2d, SeparableConv2d
 
 
 class EEGNet(ModelCore):
-    # This is able to overfit to session 1, failing to generalise to session 2
-    # Session 1 val = 0.95, but session 2 acc = 0.729
 
     def get_default_hyperparameters(self, test_dataset):
         return {
