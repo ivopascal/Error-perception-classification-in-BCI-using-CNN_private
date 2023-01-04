@@ -11,7 +11,7 @@ from settings import FEEDBACK_WINDOW_SIZE, CONTINUOUS_TESTING_INTERVAL, CONTINUO
 from src.data.build_dataset import build_dataset, build_continuous_dataset
 from src.data.util import save_file_pickle
 from src.evaluation.evaluate import build_evaluation_metrics
-from src.util.dataclasses import EpochedDataSet
+from src.util.dataclasses import EpochedDataSet, PredLabels
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
@@ -57,7 +57,6 @@ def train_lda(dataset_file_path: Optional[str] = None, dataset: Optional[Epoched
     x_val = [sample[0].reshape(-1) for sample in val_set]
     y_val = [sample[1][4] for sample in val_set]
 
-
     pre_pca = PCA()
     pre_pca.fit(x_train, y_train)
     n_pca_features = sum(pre_pca.explained_variance_ratio_.cumsum() <= 0.99)
@@ -88,10 +87,15 @@ def train_lda(dataset_file_path: Optional[str] = None, dataset: Optional[Epoched
     y_in_distribution[y_true == -1] = 0
     y_true[y_true == -1] = 1
     y_subj_idx = np.array([result[0] for batch in results for result in batch[1]])
-    metrics = build_evaluation_metrics(torch.from_numpy(y_true),
-                                       torch.from_numpy(y_predicted),
-                                       torch.from_numpy(y_variance),
-                                       torch.from_numpy(y_in_distribution),
-                                       torch.from_numpy(y_subj_idx))
+    metrics = build_evaluation_metrics(
+        PredLabels(torch.from_numpy(y_true),
+                   torch.from_numpy(y_predicted),
+                   torch.from_numpy(y_variance),
+                   None,
+                   None,
+                   torch.from_numpy(y_in_distribution),
+                   torch.from_numpy(y_subj_idx)
+                   )
+    )
     save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
                      f"metrics_{EXPERIMENT_NAME}_continuous_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")

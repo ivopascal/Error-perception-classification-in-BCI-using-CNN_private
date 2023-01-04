@@ -33,7 +33,7 @@ def test_continuous(models, comet_logger, dataset_folder):
     print("Testing against continuous data...")
     metrics = calculate_metrics(trainer, models, dm, ckpt_path=None)
     log_evaluation_metrics_to_comet(metrics, comet_logger, prefix="Continuous_")
-    log_continuous_metrics(metrics, comet_logger)
+    log_continuous_metrics(metrics.pred_labels, comet_logger)
 
     save_file_pickle(metrics, PROJECT_RESULTS_FOLDER +
                      f"metrics_{EXPERIMENT_NAME}_continuous_{datetime.now().strftime('[%Y-%m-%d,%H:%M]')}.pkl")

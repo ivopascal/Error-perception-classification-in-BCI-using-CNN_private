@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from src.Models.EegNet import ProperEEGNet
+from src.util.dataclasses import PredLabels
 from src.util.nn_modules import Permute, DepthwiseConv2d, SeparableConv2d, enable_dropout, \
     SamplingSoftmax, Softplus
 from src.util.util import uncertainty
@@ -78,8 +79,6 @@ class TwoHeadPredictModel(nn.Module):
         stds = self.preprocess_variance_output(variances)
 
         y_logits_mean = means.mean(dim=0)
-        # mixture_var = (stds.square() + means.square()).mean(axis=0) - y_logits_mean.square()
-        # mixture_var[mixture_var < 0.0] = 0.0
 
         y_logits_std_epi = means.std(dim=0)
         y_logits_std_ale = stds.mean(dim=0)
@@ -134,7 +133,13 @@ class DisentangledModel(ProperEEGNet):
         return super().test_epoch_end(outputs)
 
     def get_test_labels_predictions(self):
-        return self.test_y_true, self.test_y_predicted, self.test_y_variance, self.test_y_in_distribution, self.test_y_subj_idx
+        return PredLabels(self.test_y_true,
+                          self.test_y_predicted,
+                          self.test_y_variance,
+                          self.epi_uncertainty,
+                          self.ale_uncertainty,
+                          self.test_y_in_distribution,
+                          self.test_y_subj_idx)
 
     def get_default_hyperparameters(self, test_dataset):
         hyper_params = super().get_default_hyperparameters(test_dataset)

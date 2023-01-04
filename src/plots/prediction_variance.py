@@ -4,14 +4,14 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from src.util.dataclasses import EvaluationMetrics
+from src.util.dataclasses import EvaluationMetrics, PredLabels
 
 
-def plot_prediction_variance(metrics: EvaluationMetrics) -> Tuple[Figure, Axes]:
+def plot_prediction_variance(pred_labels: PredLabels) -> Tuple[Figure, Axes]:
     fig, axs = plt.subplots(1, 2)
-    axs[0].scatter(metrics.y_predicted[~metrics.y_in_distribution], metrics.y_variance[~metrics.y_in_distribution])
+    axs[0].scatter(pred_labels.y_predicted[~pred_labels.y_in_distribution], pred_labels.y_variance[~pred_labels.y_in_distribution])
     axs[0].set_title("Out of distribution")
-    axs[1].scatter(metrics.y_predicted[metrics.y_in_distribution], metrics.y_variance[metrics.y_in_distribution])
+    axs[1].scatter(pred_labels.y_predicted[pred_labels.y_in_distribution], pred_labels.y_variance[pred_labels.y_in_distribution])
     axs[1].set_title("In distribution")
 
     axs[0].set_ylabel("Predicted variance")

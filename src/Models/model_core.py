@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchmetrics.functional import accuracy
 
+from src.util.dataclasses import PredLabels
 from src.util.nn_modules import enable_dropout
 
 
@@ -214,5 +215,11 @@ class ModelCore(pl.LightningModule):
             raise ValueError(f"Unknown optimizer {self.hyper_params['optimizer'] } in model hyper_params")
         return [optimizer]
 
-    def get_test_labels_predictions(self):
-        return self.test_y_true, self.test_y_predicted, self.test_y_variance, self.test_y_in_distribution, self.test_y_subj_idx
+    def get_test_labels_predictions(self) -> PredLabels:
+        return PredLabels(self.test_y_true,
+                          self.test_y_predicted,
+                          None,
+                          None,
+                          self.test_y_variance,
+                          self.test_y_in_distribution,
+                          self.test_y_subj_idx)

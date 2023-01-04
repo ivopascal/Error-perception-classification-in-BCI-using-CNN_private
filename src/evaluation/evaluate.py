@@ -14,47 +14,53 @@ from src.evaluation.per_participant import split_metrics_per_participant
 from src.plots.average_around_event import plot_average_around_event
 from src.plots.prediction_variance import plot_prediction_variance
 from src.plots.roc_auc import plot_roc_auc
-from src.util.dataclasses import EvaluationMetrics, StatScores
+from src.util.dataclasses import EvaluationMetrics, StatScores, PredLabels
 
 
 def calculate_metrics(trainer, models: Union[ModelCore, List[ModelCore]], datamodule, ckpt_path) -> EvaluationMetrics:
     if not isinstance(models, list):
         models = [models]
-    all_y_predictions = []
 
+    all_y_predictions = []
     for model in models:
         trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
-        y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx = model.get_test_labels_predictions()
-        all_y_predictions.append(y_predicted)
+        pred_labels = model.get_test_labels_predictions()
+        all_y_predictions.append(pred_labels.y_predicted)
 
     all_y_predictions = torch.stack(all_y_predictions).type(dtype=torch.float32)
     y_predicted = all_y_predictions.mean(dim=0)
     if len(models) > 1:
         y_variance = all_y_predictions.std(dim=0)
+    else:
+        y_variance = pred_labels.y_variance
 
-    return build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx)  # noqa
+    pred_labels = PredLabels(pred_labels.y_true,
+                             y_predicted,
+                             y_variance,
+                             pred_labels.y_epi_uncertainty,
+                             pred_labels.y_ale_uncertainty,
+                             pred_labels.y_in_distribution,
+                             pred_labels.y_subj_idx,
+                             )
+
+    return build_evaluation_metrics(pred_labels)  # noqa
 
 
-def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution, y_subj_idx) -> EvaluationMetrics:
-    y_true = y_true.reshape(-1).clone().to('cpu')
-    y_variance = y_variance.reshape(-1).clone().to('cpu')
-    y_in_distribution = y_in_distribution.reshape(-1).clone().to('cpu')
-    y_predicted = y_predicted.reshape(-1).clone().to('cpu')
-    y_subj_idx = y_subj_idx.reshape(-1).clone().to('cpu')
-    binarized_y_predicted = y_predicted.clone()
+def build_evaluation_metrics(pred_labels: PredLabels) -> EvaluationMetrics:
+    binarized_y_predicted = pred_labels.y_predicted.clone()
     binarized_y_predicted[binarized_y_predicted > 0.5] = 1
     binarized_y_predicted[binarized_y_predicted <= 0.5] = 0
 
     y_true_matrix, y_predicted_matrix = [], []
-    for i in range(len(y_true)):
+    for i in range(len(pred_labels.y_true)):
         y_true_add = [0, 0]
         y_pred_add = [0, 0]
-        y_true_add[int(y_true[i])] = 1
+        y_true_add[int(pred_labels.y_true[i])] = 1
         y_pred_add[int(binarized_y_predicted[i])] = 1
         y_true_matrix.append(y_true_add)
         y_predicted_matrix.append(y_pred_add)
 
-    tp, fp, tn, fn, support = stat_scores(binarized_y_predicted, y_true, task="binary")
+    tp, fp, tn, fn, support = stat_scores(binarized_y_predicted, pred_labels.y_true, task="binary")
     try:
         mcc = ((tp * tn) - (fp * fn)) / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
         n_mcc = (mcc + 1) / 2
@@ -65,21 +71,17 @@ def build_evaluation_metrics(y_true, y_predicted, y_variance, y_in_distribution,
     accuracy_conf_matrix = (tp + tn) / (fp + fn + tp + tn)
 
     return EvaluationMetrics(
-        y_true,
-        y_predicted,
-        y_variance,
-        y_in_distribution,
-        y_subj_idx,
+        pred_labels,
         y_true_matrix,
         y_predicted_matrix,
         StatScores(tp, fp, tn, fn, support),
-        precision(binarized_y_predicted, y_true, task="binary"),
-        specificity(binarized_y_predicted, y_true, task="binary"),
-        accuracy(binarized_y_predicted, y_true, task="binary"),
-        recall(binarized_y_predicted, y_true, task="binary"),
+        precision(binarized_y_predicted, pred_labels.y_true, task="binary"),
+        specificity(binarized_y_predicted, pred_labels.y_true, task="binary"),
+        accuracy(binarized_y_predicted, pred_labels.y_true, task="binary"),
+        recall(binarized_y_predicted, pred_labels.y_true, task="binary"),
         negative_predictive_value,
         accuracy_conf_matrix,
-        f1_score(binarized_y_predicted, y_true, task="binary"),
+        f1_score(binarized_y_predicted, pred_labels.y_true, task="binary"),
         mcc,
         n_mcc,
     )
@@ -116,27 +118,27 @@ def evaluate_model(trainer: pl.Trainer, dm: DataModule, model: ModelCore, comet_
     log_evaluation_metrics_to_comet(metrics, comet_logger)
 
 
-def log_continuous_metrics(metrics, comet_logger):
+def log_continuous_metrics(pred_labels: PredLabels, comet_logger):
     comet_logger.experiment.log_metric("Variance when correct ID",
-                                       metrics.y_variance[metrics.y_predicted == metrics.y_true
-                                                          & metrics.y_in_distribution].mean())
+                                       pred_labels.y_variance[pred_labels.y_predicted == pred_labels.y_true
+                                                          & pred_labels.y_in_distribution].mean())
     comet_logger.experiment.log_metric("Variance when incorrect ID",
-                                       metrics.y_variance[metrics.y_predicted != metrics.y_true
-                                                          & metrics.y_in_distribution].mean())
+                                       pred_labels.y_variance[pred_labels.y_predicted != pred_labels.y_true
+                                                          & pred_labels.y_in_distribution].mean())
 
     comet_logger.experiment.log_metric("Variance when ID",
-                                       metrics.y_variance[metrics.y_in_distribution].mean())
+                                       pred_labels.y_variance[pred_labels.y_in_distribution].mean())
 
     comet_logger.experiment.log_metric("Variance when OOD",
-                                       metrics.y_variance[~metrics.y_in_distribution].mean())
+                                       pred_labels.y_variance[~pred_labels.y_in_distribution].mean())
 
-    fig, ax = plot_average_around_event(metrics, -600, 1000, y_to_plot=0, label_prefix="non-error_")
-    fig, ax = plot_average_around_event(metrics, -600, 1000, y_to_plot=1, label_prefix="error_", figax=(fig, ax))
+    fig, ax = plot_average_around_event(pred_labels, -600, 1000, y_to_plot=0, label_prefix="non-error_")
+    fig, ax = plot_average_around_event(pred_labels, -600, 1000, y_to_plot=1, label_prefix="error_", figax=(fig, ax))
     comet_logger.experiment.log_figure(figure_name="Average around event", figure=fig)
 
-    fig, axs = plot_prediction_variance(metrics)
+    fig, axs = plot_prediction_variance(pred_labels)
     comet_logger.experiment.log_figure(figure_name="Prediction vs variance", figure=fig)
 
-    per_participants = split_metrics_per_participant(metrics)
+    per_participants = split_metrics_per_participant(pred_labels)
     fig, ax = plot_roc_auc(per_participants)
     comet_logger.experiment.log_figure(figure_name="Per participant ROC", figure=fig)

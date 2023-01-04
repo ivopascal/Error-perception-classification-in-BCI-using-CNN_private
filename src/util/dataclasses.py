@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any, Optional
 import numpy as np
 from torch import Tensor
@@ -34,12 +34,24 @@ class StatScores:
 
 
 @dataclass
-class EvaluationMetrics:
+class PredLabels:
     y_true: Tensor
     y_predicted: Tensor
-    y_variance: Tensor
+    y_variance: Optional[Tensor]
+    y_epi_uncertainty: Optional[Tensor]
+    y_ale_uncertainty: Optional[Tensor]
     y_in_distribution: Tensor
     y_subj_idx: Tensor
+
+    def __post_init__(self):
+        for field in fields(PredLabels):
+            setattr(self, field.name,
+                    getattr(self, field.name).reshape(-1).to('cpu'))
+
+
+@dataclass
+class EvaluationMetrics:
+    pred_labels: PredLabels
     y_true_matrix: np.array
     y_predicted_matrix: np.array
     statscores: StatScores

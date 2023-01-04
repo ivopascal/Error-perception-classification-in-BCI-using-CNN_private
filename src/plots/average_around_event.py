@@ -7,30 +7,31 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 from settings import CONTINUOUS_TESTING_INTERVAL
+from src.util.dataclasses import PredLabels
 from src.util.util import milliseconds_to_samples, samples_to_milliseconds
 
 
-def _collect_recording_around_event(metrics, lower_window, upper_window, y_to_plot):
-    y_true_id = 1 - metrics.y_true.clone().double()
-    y_true_id[~metrics.y_in_distribution] = 0.5
+def _collect_recording_around_event(pred_labels: PredLabels, lower_window, upper_window, y_to_plot):
+    y_true_id = 1 - pred_labels.y_true.clone().double()
+    y_true_id[~pred_labels.y_in_distribution] = 0.5
 
-    event_indices = np.where(metrics.y_in_distribution.numpy())
+    event_indices = np.where(pred_labels.y_in_distribution.numpy())
 
     y_variances = []
     y_predictions = []
     y_trues = []
     y_subj = []
     for event_index in range(len(event_indices[0])):
-        y_true = 1 - (metrics.y_true[event_indices[0][event_index]])
+        y_true = 1 - (pred_labels.y_true[event_indices[0][event_index]])
 
         if y_to_plot is not None and y_to_plot != y_true:
             continue
 
-        y_subj.append(metrics.y_subj_idx[
+        y_subj.append(pred_labels.y_subj_idx[
                       event_indices[0][event_index] + lower_window: event_indices[0][event_index] + upper_window])
-        y_variances.append(metrics.y_variance[
+        y_variances.append(pred_labels.y_variance[
                            event_indices[0][event_index] + lower_window: event_indices[0][event_index] + upper_window])
-        y_predictions.append(1 - metrics.y_predicted[event_indices[0][event_index] + lower_window:
+        y_predictions.append(1 - pred_labels.y_predicted[event_indices[0][event_index] + lower_window:
                                                      event_indices[0][event_index] + upper_window])
         y_trues.append(
             y_true_id[event_indices[0][event_index] + lower_window: event_indices[0][event_index] + upper_window])
@@ -61,13 +62,13 @@ def _separate_recordings_per_participant(stacked_subjects, stacked_variances, st
            torch.vstack(trues_per_participant)
 
 
-def plot_average_around_event(metrics, lower_window_ms, upper_window_ms, testing_interval=CONTINUOUS_TESTING_INTERVAL,
+def plot_average_around_event(pred_labels: PredLabels, lower_window_ms, upper_window_ms, testing_interval=CONTINUOUS_TESTING_INTERVAL,
                               y_to_plot=None, label_prefix="", figax=None) -> Tuple[Figure, Axes]:
     lower_window = int(milliseconds_to_samples(lower_window_ms) / testing_interval)
     upper_window = int(milliseconds_to_samples(upper_window_ms) / testing_interval)
     x = [samples_to_milliseconds(step) * testing_interval for step in range(lower_window, upper_window)]
 
-    recordings = _collect_recording_around_event(metrics,
+    recordings = _collect_recording_around_event(pred_labels,
                                                  lower_window,
                                                  upper_window,
                                                  y_to_plot)
