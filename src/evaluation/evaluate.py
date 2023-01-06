@@ -7,6 +7,8 @@ import pytorch_lightning as pl
 from torchmetrics.functional import precision, f1_score, recall, stat_scores, specificity, accuracy
 
 from settings import CKPT_PATH, EXPERIMENT_NAME, PROJECT_RESULTS_FOLDER
+from src.Models.disentangled import DisentangledModel, DisentangledEnsemble
+from src.Models.ensemble_model import ensemble_predictions_variance
 from src.Models.model_core import ModelCore
 from src.data.Datamodule import DataModule
 from src.data.util import save_file_pickle
@@ -17,33 +19,17 @@ from src.plots.roc_auc import plot_roc_auc
 from src.util.dataclasses import EvaluationMetrics, StatScores, PredLabels
 
 
-def calculate_metrics(trainer, models: Union[ModelCore, List[ModelCore]], datamodule, ckpt_path) -> EvaluationMetrics:
+def calculate_metrics(trainer: pl.Trainer, models: Union[ModelCore, List[ModelCore]], datamodule, ckpt_path) -> EvaluationMetrics:
     if not isinstance(models, list):
-        models = [models]
+        trainer.test(model=models, datamodule=datamodule)
+        return build_evaluation_metrics(models.get_test_labels_predictions())
 
-    all_y_predictions = []
-    for model in models:
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
-        pred_labels = model.get_test_labels_predictions()
-        all_y_predictions.append(pred_labels.y_predicted)
+    if isinstance(models[0], DisentangledModel):
+        model = DisentangledEnsemble([model.train_model for model in models], models[0])
+        trainer.test(model=model, datamodule=datamodule)
+        return build_evaluation_metrics(model.get_test_labels_predictions())
 
-    all_y_predictions = torch.stack(all_y_predictions).type(dtype=torch.float32)
-    y_predicted = all_y_predictions.mean(dim=0)
-    if len(models) > 1:
-        y_variance = all_y_predictions.std(dim=0)
-    else:
-        y_variance = pred_labels.y_variance
-
-    pred_labels = PredLabels(pred_labels.y_true,
-                             y_predicted,
-                             y_variance,
-                             pred_labels.y_epi_uncertainty,
-                             pred_labels.y_ale_uncertainty,
-                             pred_labels.y_in_distribution,
-                             pred_labels.y_subj_idx,
-                             )
-
-    return build_evaluation_metrics(pred_labels)  # noqa
+    return ensemble_predictions_variance(trainer, models, datamodule)
 
 
 def build_evaluation_metrics(pred_labels: PredLabels) -> EvaluationMetrics:

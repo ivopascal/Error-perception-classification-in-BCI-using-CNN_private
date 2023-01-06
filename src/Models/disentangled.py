@@ -1,9 +1,12 @@
+from typing import List
+
 import torch
 import torcheeg.models
 from torch import nn
 
 from settings import LOG_DISENTANGLED_UNCERTAINTIES_ON
 from src.Models.EegNet import ProperEEGNet
+from src.Models.model_core import ModelCore
 from src.util.dataclasses import PredLabels
 from src.util.nn_modules import enable_dropout, \
     SamplingSoftmax, Softplus
@@ -53,7 +56,7 @@ class TwoHeadPredictModel(nn.Module):
         self.variance_block = two_head_train_model.variance_block
         self.forward_passes = forward_passes
 
-    def forward(self, x):
+    def _get_all_means_variances(self, x):
         all_means = []
         all_variances = []
         for _ in range(self.forward_passes):
@@ -64,8 +67,11 @@ class TwoHeadPredictModel(nn.Module):
             all_means.append(means)
             all_variances.append(variances)
 
-        means = torch.stack(all_means)
-        variances = torch.stack(all_variances)
+        return torch.stack(all_means), torch.stack(all_variances)
+
+    def forward(self, x):
+        means, variances = self._get_all_means_variances(x)
+
         stds = self.preprocess_variance_output(variances)
 
         y_logits_mean = means.mean(dim=0)
@@ -98,7 +104,7 @@ class DisentangledModel(ProperEEGNet):
                                              self.get_n_output_nodes(),
                                              self.get_hyperparams()['input_size'][1],
                                              self.get_hyperparams()['input_size'][0])
-        self.predict_model = TwoHeadPredictModel(self.train_model, self.get_hyperparams()['two_head_passes'],)
+        self.predict_model = TwoHeadPredictModel(self.train_model, self.get_hyperparams()['two_head_passes'], )
         return self.train_model
 
     def _predict_disentangled_uncertainties(self, batch):
@@ -157,3 +163,63 @@ class DisentangledModel(ProperEEGNet):
 
     def get_loss_function(self):
         return nn.CrossEntropyLoss()
+
+
+class TwoHeadEnsembleTrainModel(nn.Module):
+
+    def __init__(self, all_train_models):
+        super().__init__()
+        self.all_train_models = all_train_models
+        self.sampling_softmax = SamplingSoftmax(num_samples=100, variance_type="linear_std")
+
+    def forward(self, x):
+        all_means = []
+        all_variances = []
+        for train_model in self.all_train_models:
+            latent = train_model.trunc_model(x)
+            means = train_model.mean_block(latent)
+            variances = train_model.variance_block(latent)
+            all_means.append(means)
+            all_variances.append(variances)
+
+        mean = torch.stack(all_means).mean(dim=0)
+        var = torch.stack(all_variances).mean(dim=0)
+
+        return self.sampling_softmax([mean, var])
+
+
+class TwoHeadEnsemblePredictModel(TwoHeadPredictModel):
+
+    def __init__(self, all_train_models):
+        super().__init__(all_train_models[0], 0)
+        self.all_train_models = all_train_models
+
+    def _get_all_means_variances(self, x):
+        all_means = []
+        all_variances = []
+        for train_model in self.all_train_models:
+            latent = train_model.trunc_model(x)
+            means = train_model.mean_block(latent)
+            variances = train_model.variance_block(latent)
+            all_means.append(means)
+            all_variances.append(variances)
+
+        return torch.stack(all_means), torch.stack(all_variances)
+
+
+class DisentangledEnsemble(DisentangledModel):
+
+    def __init__(self, trained_models: List[TwoHeadTrainModel], sample_modelcore: ModelCore):
+        self.all_train_models = trained_models
+        super().__init__(train_dataset=sample_modelcore.train_dataset,
+                         val_dataset=sample_modelcore.val_dataset,
+                         test_dataset=sample_modelcore.test_dataset)
+
+    def create_model_architecture(self):
+        self.all_train_models = nn.ModuleList(self.all_train_models)
+        self.train_model = TwoHeadEnsembleTrainModel(self.all_train_models)
+        self.predict_model = TwoHeadEnsemblePredictModel(self.all_train_models)
+
+        return self.all_train_models[0]  # Needs to be some kind of averaging
+
+

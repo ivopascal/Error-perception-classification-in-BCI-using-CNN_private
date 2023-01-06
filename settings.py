@@ -56,7 +56,7 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "TorchEEGNet_Disentangling"
+EXPERIMENT_NAME = "Ensemble_Disentangling"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -67,7 +67,7 @@ MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
-EARLY_STOPPING_PATIENCE = 30
+EARLY_STOPPING_PATIENCE = 10
 # Evaluate settings
 CKPT_PATH = 'last'
 
@@ -76,7 +76,7 @@ random.seed(SEED)
 CONTINUOUS_TEST_BATCH_SIZE = 2048
 CONTINUOUS_TESTING_INTERVAL = 10
 
-ENSEMBLE_SIZE = 1
+ENSEMBLE_SIZE = 5
 
 if DEBUG_MODE:
     OVERRIDEN_HYPER_PARAMS["max_num_epochs"] = 5
@@ -85,6 +85,6 @@ if DEBUG_MODE:
         ENSEMBLE_SIZE = 2
     CONTINUOUS_TESTING_INTERVAL = 30
 
-LOG_DISENTANGLED_UNCERTAINTIES_ON = ["val"]  # log ale and epi during train/val but is very slow
+LOG_DISENTANGLED_UNCERTAINTIES_ON = []  # log ale and epi during train/val but is very slow
 
 print("Settings loaded")
