@@ -56,7 +56,7 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "Ensemble_Disentangling"
+EXPERIMENT_NAME = "Ensemble_Disentangling_Large_Connection_softmax_uncertainties"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }

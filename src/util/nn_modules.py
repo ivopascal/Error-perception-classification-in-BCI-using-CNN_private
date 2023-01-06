@@ -153,7 +153,7 @@ class SamplingSoftmax(nn.Module):
         # Apply temperature scaling to logits
         logit_samples = logit_samples / self.temperature
 
-        prob_samples = torch.softmax(logit_samples, dim=-1) # Make this softmax for sampling softmax
+        prob_samples = torch.softmax(logit_samples, dim=-1)
         probs = torch.mean(prob_samples, dim=1)
 
         # This is required due to approximation error, without it probabilities can sum to 1.01 or 0.99

@@ -18,22 +18,24 @@ class TwoHeadTrainModel(nn.Module):
         super().__init__()
         F2 = F1 * D
 
+        connection_size = 128  # Originally 2 after keras-uncertainty
         self.trunc_model = nn.Sequential(
             torcheeg.models.EEGNet(chunk_size=chunk_size,
                                    num_electrodes=num_electrodes,
                                    F1=F1,
                                    F2=F2,
                                    D=D,
-                                   num_classes=n_output_nodes,
+                                   num_classes=connection_size,
                                    kernel_1=int(sampling_rate / 2),
                                    kernel_2=int(sampling_rate / 8)
                                    ),
-            nn.Softmax(),
+            # nn.Softmax(),
+            nn.ReLU(),
         )
 
-        self.mean_block = nn.Linear(n_output_nodes, n_output_nodes)
+        self.mean_block = nn.Linear(connection_size, n_output_nodes)
         self.variance_block = nn.Sequential(
-            nn.Linear(n_output_nodes, n_output_nodes),
+            nn.Linear(connection_size, n_output_nodes),
             Softplus()  # Custom Softplus because torch doesn't work on mps
         )
 
@@ -79,7 +81,7 @@ class TwoHeadPredictModel(nn.Module):
         y_logits_std_epi = means.std(dim=0)
         y_logits_std_ale = stds.mean(dim=0)
 
-        sampling_softmax = SamplingSoftmax(num_samples=self.forward_passes)
+        sampling_softmax = SamplingSoftmax(num_samples=100)
 
         y_probs = sampling_softmax([y_logits_mean, y_logits_std_ale + y_logits_std_epi])
         y_probs_epi = sampling_softmax([y_logits_mean, y_logits_std_epi])
