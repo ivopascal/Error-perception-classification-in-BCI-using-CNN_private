@@ -3,14 +3,13 @@ from typing import List
 import pytorch_lightning as pl
 import torch
 
-from src.Models.disentangled import DisentangledModel
 from src.Models.model_core import ModelCore
-from src.util.dataclasses import PredLabels, EvaluationMetrics
+from src.util.dataclasses import PredLabels
 
 
 def ensemble_predictions_variance(trainer: pl.Trainer,
                                   models: List[ModelCore],
-                                  datamodule: pl.LightningDataModule) -> EvaluationMetrics:
+                                  datamodule: pl.LightningDataModule) -> PredLabels:
 
     all_y_predictions = []
     for model in models:
@@ -34,5 +33,5 @@ def ensemble_predictions_variance(trainer: pl.Trainer,
                              pred_labels.y_subj_idx,
                              )
 
-    return build_evaluation_metrics(pred_labels)  # noqa
+    return pred_labels
 

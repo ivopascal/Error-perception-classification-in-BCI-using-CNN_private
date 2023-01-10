@@ -8,6 +8,7 @@ from settings import LOG_DISENTANGLED_UNCERTAINTIES_ON
 from src.Models.EegNet import ProperEEGNet
 from src.Models.model_core import ModelCore
 from src.util.dataclasses import PredLabels
+from src.util.metrics import beta_nll_loss
 from src.util.nn_modules import enable_dropout, \
     SamplingSoftmax, Softplus
 from src.util.util import uncertainty
@@ -18,24 +19,25 @@ class TwoHeadTrainModel(nn.Module):
         super().__init__()
         F2 = F1 * D
 
-        connection_size = 128  # Originally 2 after keras-uncertainty
+        eegnet = torcheeg.models.EEGNet(chunk_size=chunk_size,
+                                        num_electrodes=num_electrodes,
+                                        F1=F1,
+                                        F2=F2,
+                                        D=D,
+                                        num_classes=1,
+                                        kernel_1=int(sampling_rate / 2),
+                                        kernel_2=int(sampling_rate / 8)
+                                        )
+
         self.trunc_model = nn.Sequential(
-            torcheeg.models.EEGNet(chunk_size=chunk_size,
-                                   num_electrodes=num_electrodes,
-                                   F1=F1,
-                                   F2=F2,
-                                   D=D,
-                                   num_classes=connection_size,
-                                   kernel_1=int(sampling_rate / 2),
-                                   kernel_2=int(sampling_rate / 8)
-                                   ),
-            # nn.Softmax(),
-            nn.ReLU(),
+            eegnet.block1,
+            eegnet.block2,
+            nn.Flatten(),
         )
 
-        self.mean_block = nn.Linear(connection_size, n_output_nodes)
+        self.mean_block = nn.Linear(F2 * eegnet.feature_dim, n_output_nodes)
         self.variance_block = nn.Sequential(
-            nn.Linear(connection_size, n_output_nodes),
+            nn.Linear(F2 * eegnet.feature_dim, n_output_nodes),
             Softplus()  # Custom Softplus because torch doesn't work on mps
         )
 
@@ -45,7 +47,9 @@ class TwoHeadTrainModel(nn.Module):
         latent = self.trunc_model(x)
         mean = self.mean_block(latent)
         var = self.variance_block(latent)  # softplus activation
-        out = self.sampling_softmax([mean, var])
+        out, out_var = self.sampling_softmax([mean, var])
+
+        self.prediction_variance = out_var
 
         return out
 
@@ -83,9 +87,9 @@ class TwoHeadPredictModel(nn.Module):
 
         sampling_softmax = SamplingSoftmax(num_samples=100)
 
-        y_probs = sampling_softmax([y_logits_mean, y_logits_std_ale + y_logits_std_epi])
-        y_probs_epi = sampling_softmax([y_logits_mean, y_logits_std_epi])
-        y_probs_ale = sampling_softmax([y_logits_mean, y_logits_std_ale])
+        y_probs, _ = sampling_softmax([y_logits_mean, y_logits_std_ale + y_logits_std_epi])
+        y_probs_epi, _ = sampling_softmax([y_logits_mean, y_logits_std_epi])
+        y_probs_ale, _ = sampling_softmax([y_logits_mean, y_logits_std_ale])
 
         ale_entropy = torch.Tensor(uncertainty(y_probs_ale.detach().cpu().numpy()))
         epi_entropy = torch.Tensor(uncertainty(y_probs_epi.detach().cpu().numpy()))
@@ -164,7 +168,10 @@ class DisentangledModel(ProperEEGNet):
         return 2
 
     def get_loss_function(self):
-        return nn.CrossEntropyLoss()
+        def _local_loss_fn(y_true, y_pred):
+            return beta_nll_loss(y_true, self.train_model.prediction_variance, y_pred, beta=1.0).mean()
+
+        return _local_loss_fn
 
 
 class TwoHeadEnsembleTrainModel(nn.Module):
@@ -187,7 +194,8 @@ class TwoHeadEnsembleTrainModel(nn.Module):
         mean = torch.stack(all_means).mean(dim=0)
         var = torch.stack(all_variances).mean(dim=0)
 
-        return self.sampling_softmax([mean, var])
+        prediction, _ = self.sampling_softmax([mean, var])
+        return prediction
 
 
 class TwoHeadEnsemblePredictModel(TwoHeadPredictModel):
@@ -222,6 +230,4 @@ class DisentangledEnsemble(DisentangledModel):
         self.train_model = TwoHeadEnsembleTrainModel(self.all_train_models)
         self.predict_model = TwoHeadEnsemblePredictModel(self.all_train_models)
 
-        return self.all_train_models[0]  # Needs to be some kind of averaging
-
-
+        return self.train_model

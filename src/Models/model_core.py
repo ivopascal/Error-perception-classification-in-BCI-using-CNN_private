@@ -108,6 +108,8 @@ class ModelCore(pl.LightningModule):
             y_logits, y_variance = self.get_mc_predictions(x)
         else:
             y_logits = self.forward(x)
+            if y_logits.isnan().sum():
+                y_logits = self.forward(x)
             y_variance = torch.zeros(y_logits.shape[0])
 
         if self.get_n_output_nodes() == 1:

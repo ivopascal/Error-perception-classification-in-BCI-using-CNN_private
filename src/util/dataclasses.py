@@ -45,8 +45,10 @@ class PredLabels:
 
     def __post_init__(self):
         for field in fields(PredLabels):
-            setattr(self, field.name,
-                    getattr(self, field.name).reshape(-1).to('cpu'))
+            value = getattr(self, field.name)
+            if value is not None:
+                setattr(self, field.name,
+                        getattr(self, field.name).reshape(-1).to('cpu'))
 
 
 @dataclass

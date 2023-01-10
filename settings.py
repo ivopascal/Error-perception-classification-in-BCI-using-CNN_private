@@ -56,7 +56,7 @@ OVERRIDE_SAVES = False
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "Ensemble_Disentangling_Large_Connection_softmax_uncertainties"
+EXPERIMENT_NAME = "DisentangledDropoutBeta1"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
@@ -85,6 +85,6 @@ if DEBUG_MODE:
         ENSEMBLE_SIZE = 2
     CONTINUOUS_TESTING_INTERVAL = 30
 
-LOG_DISENTANGLED_UNCERTAINTIES_ON = []  # log ale and epi during train/val but is very slow
+LOG_DISENTANGLED_UNCERTAINTIES_ON = ['train', 'val']  # log ale and epi during train/val but is very slow
 
 print("Settings loaded")

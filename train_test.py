@@ -69,7 +69,7 @@ def train(dataset_file_path: Optional[str] = None,
         comet_logger.experiment.log_model(EXPERIMENT_NAME, model_save_path)
         comet_logger.experiment.log_code('settings.py')
 
-        # evaluate_model(trainer, dm, model, comet_logger)
+        evaluate_model(trainer, dm, model, comet_logger)
 
         models.append(model)
         comet_logger.experiment.end()

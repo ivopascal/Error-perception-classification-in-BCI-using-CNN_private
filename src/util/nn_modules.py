@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -156,19 +158,25 @@ class SamplingSoftmax(nn.Module):
         prob_samples = torch.softmax(logit_samples, dim=-1)
         probs = torch.mean(prob_samples, dim=1)
 
+        probs_variance = torch.var(prob_samples, dim=1)
+
         # This is required due to approximation error, without it probabilities can sum to 1.01 or 0.99
         probs = probs / torch.sum(probs, dim=-1, keepdim=True)
 
-        return probs
+        return probs, probs_variance
 
 
 class Softplus(nn.Module):
 
-    def __init__(self):
+    def __init__(self, threshold=20):
         super().__init__()
+        self.threshold = threshold
 
     def __repr__(self):
         return "Softplus"
 
     def forward(self, x):
-        return torch.log(torch.exp(x + 1))
+        out = torch.log(torch.exp(x) + 1)
+        out[x > self.threshold] = x[x > self.threshold]  # Linear for numerical stability
+
+        return out

@@ -2,7 +2,6 @@ import math
 from datetime import datetime
 from typing import List, Union
 
-import torch
 import pytorch_lightning as pl
 from torchmetrics.functional import precision, f1_score, recall, stat_scores, specificity, accuracy
 
@@ -25,11 +24,12 @@ def calculate_metrics(trainer: pl.Trainer, models: Union[ModelCore, List[ModelCo
         return build_evaluation_metrics(models.get_test_labels_predictions())
 
     if isinstance(models[0], DisentangledModel):
+
         model = DisentangledEnsemble([model.train_model for model in models], models[0])
         trainer.test(model=model, datamodule=datamodule)
         return build_evaluation_metrics(model.get_test_labels_predictions())
 
-    return ensemble_predictions_variance(trainer, models, datamodule)
+    return build_evaluation_metrics(ensemble_predictions_variance(trainer, models, datamodule))
 
 
 def build_evaluation_metrics(pred_labels: PredLabels) -> EvaluationMetrics:
