@@ -8,7 +8,7 @@ from settings import LOG_DISENTANGLED_UNCERTAINTIES_ON
 from src.Models.EegNet import ProperEEGNet
 from src.Models.model_core import ModelCore
 from src.util.dataclasses import PredLabels
-from src.util.metrics import beta_nll_loss
+from src.util.metrics import beta_nll_loss, classification_negative_log_likelihood
 from src.util.nn_modules import enable_dropout, \
     SamplingSoftmax, Softplus
 from src.util.util import uncertainty
@@ -41,7 +41,7 @@ class TwoHeadTrainModel(nn.Module):
             Softplus()  # Custom Softplus because torch doesn't work on mps
         )
 
-        self.sampling_softmax = SamplingSoftmax(num_samples=100, variance_type="linear_std")
+        self.sampling_softmax = SamplingSoftmax(num_samples=1000, variance_type="linear_std")
 
     def forward(self, x):
         latent = self.trunc_model(x)
@@ -85,7 +85,7 @@ class TwoHeadPredictModel(nn.Module):
         y_logits_std_epi = means.std(dim=0)
         y_logits_std_ale = stds.mean(dim=0)
 
-        sampling_softmax = SamplingSoftmax(num_samples=100)
+        sampling_softmax = SamplingSoftmax(num_samples=1000)
 
         y_probs, _ = sampling_softmax([y_logits_mean, y_logits_std_ale + y_logits_std_epi])
         y_probs_epi, _ = sampling_softmax([y_logits_mean, y_logits_std_epi])
@@ -167,11 +167,21 @@ class DisentangledModel(ProperEEGNet):
     def get_n_output_nodes(self):
         return 2
 
-    def get_loss_function(self):
-        def _local_loss_fn(y_true, y_pred):
-            return beta_nll_loss(y_true, self.train_model.prediction_variance, y_pred, beta=1.0).mean()
+    # def get_loss_function(self):
+    #     def _local_loss_fn(y_true, y_pred):
+    #         return beta_nll_loss(y_true, self.train_model.prediction_variance, y_pred, beta=1.0).mean()
+    #
+    #     return _local_loss_fn
 
-        return _local_loss_fn
+    # def get_loss_function(self):
+    #     def _local_loss_fn(_, y_true):
+    #         repetitions = [1, self.train_model.sampling_softmax.num_samples, 1]
+    #
+    #         y_true = torch.unsqueeze(y_true, dim=1)
+    #         y_true = y_true.repeat(repetitions)
+    #         return classification_negative_log_likelihood(y_true, self.train_model.sampling_softmax.samples).mean()
+    #
+    #     return _local_loss_fn
 
 
 class TwoHeadEnsembleTrainModel(nn.Module):

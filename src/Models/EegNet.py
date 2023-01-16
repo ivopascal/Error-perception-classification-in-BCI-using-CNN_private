@@ -12,9 +12,9 @@ class EEGNet(ModelCore):
         return {
             'input_size': test_dataset[0][0].shape,
             'num_classes': 1,
-            'batch_size': 120,
+            'batch_size': 16,
             'test_batch_size': 10,
-            'max_num_epochs': 1200,
+            'max_num_epochs': 300,
             'optimizer': 'Adam',
             'learning_rate': 0.001,
             'betas': (0.9, 0.999),

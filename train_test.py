@@ -35,8 +35,8 @@ def train(dataset_file_path: Optional[str] = None,
 
         trainer = pl.Trainer(
             max_epochs=model.hyper_params['max_num_epochs'],
-            callbacks=[EarlyStopping(monitor="loss_val", min_delta=0.00, patience=EARLY_STOPPING_PATIENCE,
-                                     verbose=False, mode="min")],
+            # callbacks=[EarlyStopping(monitor="loss_val", min_delta=0.00, patience=EARLY_STOPPING_PATIENCE,
+            #                          verbose=False, mode="min")],
             logger=comet_logger,
             accelerator="mps",
             devices=1,

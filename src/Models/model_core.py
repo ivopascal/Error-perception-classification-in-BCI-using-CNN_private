@@ -67,6 +67,9 @@ class ModelCore(pl.LightningModule):
 
         y_logits = self.forward(x)
 
+        if y_logits.isnan().sum():
+            self.forward(x)
+
         if self.get_n_output_nodes() == 1:
             y_logits = y_logits.view(y_logits.shape[0])
             acc = accuracy(y_logits, y, task="binary")

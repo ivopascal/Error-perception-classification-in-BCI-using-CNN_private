@@ -43,3 +43,17 @@ def beta_nll_loss(mean: Tensor, variance: Tensor, target: Tensor, beta=0.5, epsi
         raise ValueError("Computed loss has NaNs")
 
     return loss.sum(axis=-1)
+
+
+def classification_negative_log_likelihood(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
+    """
+        Negative log-likelihood or negative log-probability loss/metric.
+        Reference: Evaluating Predictive Uncertainty Challenge, Quiñonero-Candela et al, 2006.
+        It sums over classes: log(y_pred) for true class and log(1.0 - pred) for not true class, and then takes average across samples.
+    """
+    y_pred = torch.clamp(y_pred, 1e-6, 1.0 - 1e-6)  # Fairly large eps bc 32 bit precision
+
+    losses = (y_true * y_pred.log() + (1.0 - y_true) * (1.0 - y_pred).log()).sum(dim=-1)
+    if losses.mean().isinf():
+        print(losses)
+    return -losses.mean(dim=-1)

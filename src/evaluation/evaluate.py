@@ -7,7 +7,7 @@ from torchmetrics.functional import precision, f1_score, recall, stat_scores, sp
 
 from settings import CKPT_PATH, EXPERIMENT_NAME, PROJECT_RESULTS_FOLDER
 from src.Models.disentangled import DisentangledModel, DisentangledEnsemble
-from src.Models.ensemble_model import ensemble_predictions_variance
+from src.evaluation.ensembling import ensemble_predictions_variance
 from src.Models.model_core import ModelCore
 from src.data.Datamodule import DataModule
 from src.data.util import save_file_pickle

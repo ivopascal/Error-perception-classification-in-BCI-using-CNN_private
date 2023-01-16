@@ -41,29 +41,29 @@ USE_CAUSAL_BUTTERWORTH = True
 
 FILTER_ICA = True
 N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
-EOG_CHANNEL = "Fpz"
+EOG_CHANNEL = "Fpz"  # These should be a difference between two electrodes so you get a derivative
 ECG_CHANNEL = "Fpz"
-EOG_THRESHOLD = 0.8
+EOG_THRESHOLD = 1.1
 HEOG_THRESHOLD = 0.6
-ECG_THRESHOLD = 0.6
-MUSCLE_THRESHOLD = 0.7
+ECG_THRESHOLD = 1.1
+MUSCLE_THRESHOLD = 1.1
 MONTAGE = 'standard_1020'  # 3D layout of channels
 mne.set_log_level("ERROR")
 
 EXCLUDE_CHANNELS = None
-INCLUDE_CHANNELS = None
-OVERRIDE_SAVES = False
+INCLUDE_CHANNELS = ["FC1", "FCz", "FC2", "C1", "Cz", "C2", "CP3", "CP1", "CPz", "CP2"]
+OVERRIDE_SAVES = True
 BALANCE_DATASET = True
 
 # Training settings
-EXPERIMENT_NAME = "DisentangledDropoutBeta1"
+EXPERIMENT_NAME = "LDA_FCzCz"
 DEBUG_MODE = False
 OVERRIDEN_HYPER_PARAMS = {
 }
 
 MODEL_CLASS_NAME = "disentangled.DisentangledModel"
 
-MODEL_TYPE = "Pytorch"  # Either "Pytorch" or "SKLearn"
+MODEL_TYPE = "SKLearn"  # Either "Pytorch" or "SKLearn"
 
 # Validation is taken from train sessions (1), so test sessions (2) remain black box
 VALIDATION_PERCENTAGE = 0.1
@@ -85,6 +85,6 @@ if DEBUG_MODE:
         ENSEMBLE_SIZE = 2
     CONTINUOUS_TESTING_INTERVAL = 30
 
-LOG_DISENTANGLED_UNCERTAINTIES_ON = ['train', 'val']  # log ale and epi during train/val but is very slow
+LOG_DISENTANGLED_UNCERTAINTIES_ON = []  # log ale and epi during train/val but is very slow
 
 print("Settings loaded")

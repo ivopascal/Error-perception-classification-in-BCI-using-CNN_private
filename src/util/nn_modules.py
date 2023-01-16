@@ -121,6 +121,7 @@ class SamplingSoftmax(nn.Module):
         self.num_samples = num_samples
         self.temperature = temperature
         self.variance_type = variance_type
+        self.samples = None
 
     def __repr__(self):
         return f'SamplingSoftmax'
@@ -156,6 +157,7 @@ class SamplingSoftmax(nn.Module):
         logit_samples = logit_samples / self.temperature
 
         prob_samples = torch.softmax(logit_samples, dim=-1)
+        self.samples = prob_samples
         probs = torch.mean(prob_samples, dim=1)
 
         probs_variance = torch.var(prob_samples, dim=1)

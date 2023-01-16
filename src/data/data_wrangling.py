@@ -32,7 +32,11 @@ def channel_name_to_index(channel_name: str) -> int:
 def channel_name_to_physiological_index(channel_name: str) -> int:
     physiological_channels = CHANNEL_NAMES
     for non_physiological_channel in NON_PHYSIOLOGICAL_CHANNELS:
-        physiological_channels.remove(non_physiological_channel)
+        try:
+            physiological_channels.remove(non_physiological_channel)
+        except ValueError:
+            continue
+
     return physiological_channels.index(channel_name)
 
 
@@ -132,6 +136,9 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
         if file_names:
             run = open_file_pickle(PROJECT_RAW_FOLDER + run + ".p")
 
+        if run.file_sub_sess_run[0] == 6:
+            continue
+
         run.filtered_metadata = construct_metadata()
         folder_name = PROJECT_PREPROCESSED_FOLDER + metadata2path_code(run.filtered_metadata) + "/"
         if not os.path.exists(folder_name):
@@ -147,6 +154,9 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
         # ------------------------ Remove non phisiological signals ------------------------
         run.session = run.session[physiological_indices, :]
 
+        if FILTER_ICA:
+            run.session = filter_ica(run)
+
         if EXCLUDE_CHANNELS and INCLUDE_CHANNELS:
             raise ValueError("Specify either only include channels or only exclude channels")
         if EXCLUDE_CHANNELS:  # If dictionary is not empty: Exclusion criterion
@@ -155,12 +165,8 @@ def preprocess_data(file_names: List[str] = None, runs: List[TimeSeriesRun] = No
             run.session = run.session[channels_indexes, :]
         elif INCLUDE_CHANNELS:  # If dictionary is not empty: Inclusion criterion
             channels_indexes = np.sort(
-                [channel_name_to_physiological_index(channel) for channel in CHANNEL_NAMES if
-                 channel in INCLUDE_CHANNELS])
+                [channel_name_to_physiological_index(channel) for channel in INCLUDE_CHANNELS])
             run.session = run.session[channels_indexes, :]
-
-        if FILTER_ICA:
-            run.session = filter_ica(run)
 
         # ------------------------ Bandpass filter ------------------------
         if USE_BANDPASS:
