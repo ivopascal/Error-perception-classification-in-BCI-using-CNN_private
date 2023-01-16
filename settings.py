@@ -40,7 +40,7 @@ BANDPASS_HIGH_FREQ = 10
 USE_CAUSAL_BUTTERWORTH = True
 
 FILTER_ICA = True
-N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes
+N_ICA_COMPONENTS = 15  # preprocessing 15 already takes about 10 minutes. Same as n_channels is optimal, but expensive
 EOG_CHANNEL = "Fpz"  # These should be a difference between two electrodes so you get a derivative
 ECG_CHANNEL = "Fpz"
 EOG_THRESHOLD = 1.1
